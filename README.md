@@ -120,6 +120,8 @@ Current bundled benchmark: **20/20 questions (100%)** retrieve the annotated pag
 
 See the dated [validation report](docs/VALIDATION.md) for the complete test matrix, including the measured 3.47-second warm-cache indexing time for a generated 100-page text PDF.
 
+Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
+
 ## Repository map
 
 ```text
