@@ -1,0 +1,23 @@
+[
+  {"question":"What is the difference between supervised and unsupervised learning?","file":"citemind-demo-course.pdf","page":1},
+  {"question":"What should a useful ML project define before modelling?","file":"citemind-demo-course.pdf","page":1},
+  {"question":"Which data split must stay untouched until final evaluation?","file":"citemind-demo-course.pdf","page":2},
+  {"question":"What is data leakage and why is it dangerous?","file":"citemind-demo-course.pdf","page":2},
+  {"question":"How do L1 and L2 regularization differ?","file":"citemind-demo-course.pdf","page":3},
+  {"question":"Why should features sometimes be scaled?","file":"citemind-demo-course.pdf","page":3},
+  {"question":"How does backpropagation calculate gradients?","file":"citemind-demo-course.pdf","page":4},
+  {"question":"What does the learning rate control?","file":"citemind-demo-course.pdf","page":4},
+  {"question":"Why does convolution use fewer parameters?","file":"citemind-demo-course.pdf","page":5},
+  {"question":"What is the receptive field of an activation?","file":"citemind-demo-course.pdf","page":5},
+  {"question":"How can I reduce overfitting?","file":"citemind-demo-course.pdf","page":6},
+  {"question":"How are underfitting and overfitting different?","file":"citemind-demo-course.pdf","page":6},
+  {"question":"Why can accuracy mislead on imbalanced data?","file":"citemind-demo-course.pdf","page":7},
+  {"question":"What is the harmonic mean of precision and recall?","file":"citemind-demo-course.pdf","page":7},
+  {"question":"When is keyword retrieval better than semantic retrieval?","file":"citemind-demo-course.pdf","page":8},
+  {"question":"Why combine keyword and vector search?","file":"citemind-demo-course.pdf","page":8},
+  {"question":"Why should model results be evaluated across user groups?","file":"citemind-demo-course.pdf","page":9},
+  {"question":"Are explanations sufficient evidence for an important claim?","file":"citemind-demo-course.pdf","page":9},
+  {"question":"What details make an experiment reproducible?","file":"citemind-demo-course.pdf","page":10},
+  {"question":"Why should an experiment include a baseline?","file":"citemind-demo-course.pdf","page":10}
+]
+

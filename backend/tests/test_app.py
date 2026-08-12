@@ -1,0 +1,78 @@
+import json
+
+
+def create_course(client):
+    response = client.post("/api/courses", json={"name": "Machine Learning"})
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
+def upload(client, course_id, sample_pdf):
+    response = client.post(
+        f"/api/courses/{course_id}/documents",
+        data={"kind": "lecture"},
+        files={"file": ("lecture-01.pdf", sample_pdf, "application/pdf")},
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def test_pdf_chunks_keep_real_page_numbers(client, sample_pdf):
+    http, _, db_module = client
+    course_id = create_course(http)
+    document = upload(http, course_id, sample_pdf)
+    assert document["page_count"] == 2
+    with db_module.connect() as db:
+        chunks = db.execute("SELECT page_number, content FROM chunks ORDER BY page_number").fetchall()
+    assert [row["page_number"] for row in chunks] == [1, 2]
+    assert "Backpropagation" in chunks[0]["content"]
+    assert "Convolution" in chunks[1]["content"]
+
+
+def test_ask_returns_only_validated_source_metadata(client, sample_pdf, monkeypatch):
+    http, main, _ = client
+    course_id = create_course(http)
+    document = upload(http, course_id, sample_pdf)
+    monkeypatch.setattr(main.ai, "answer", lambda question, evidence, history: {
+        "answer": "Convolution shares weights [1].",
+        "citation_numbers": [1],
+    })
+    response = http.post(f"/api/courses/{course_id}/ask", json={"query": "What does convolution do?", "top_k": 5})
+    assert response.status_code == 200, response.text
+    citation = response.json()["citations"][0]
+    assert citation["document_id"] == document["id"]
+    assert citation["page_number"] in {1, 2}
+    assert citation["content"]
+
+
+def test_delete_document_removes_file_chunks_and_chat(client, sample_pdf, monkeypatch):
+    http, main, db_module = client
+    course_id = create_course(http)
+    document = upload(http, course_id, sample_pdf)
+    monkeypatch.setattr(main.ai, "answer", lambda question, evidence, history: {
+        "answer": "The material says this [1].", "citation_numbers": [1]
+    })
+    assert http.post(f"/api/courses/{course_id}/ask", json={"query": "training data"}).status_code == 200
+    assert http.delete(f"/api/documents/{document['id']}").status_code == 204
+    with db_module.connect() as db:
+        assert db.execute("SELECT count(*) FROM chunks").fetchone()[0] == 0
+        assert db.execute("SELECT count(*) FROM messages").fetchone()[0] == 0
+    assert http.get(f"/api/documents/{document['id']}/file").status_code == 404
+
+
+def test_scanned_pdf_is_rejected(client):
+    import fitz
+    http, _, _ = client
+    course_id = create_course(http)
+    pdf = fitz.open()
+    pdf.new_page()
+    data = pdf.tobytes()
+    pdf.close()
+    response = http.post(
+        f"/api/courses/{course_id}/documents",
+        data={"kind": "notes"},
+        files={"file": ("scan.pdf", data, "application/pdf")},
+    )
+    assert response.status_code == 422
+    assert "Scanned PDFs" in response.json()["detail"]
+

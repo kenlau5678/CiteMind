@@ -1,0 +1,139 @@
+# CiteMind
+
+**Ask your notes. Verify every answer.**
+
+![CiteMind course workspace](docs/images/citemind-workspace.png)
+
+[Watch the 18-second product walkthrough](docs/video/citemind-demo.mp4)
+
+| Welcome | Add a source | Verify evidence |
+| --- | --- | --- |
+| ![CiteMind welcome screen](docs/images/citemind-welcome.png) | ![CiteMind PDF upload](docs/images/citemind-upload.png) | ![CiteMind citation viewer](docs/images/citemind-workspace.png) |
+
+CiteMind is a local-first course knowledge base for lecture notes, student notes, and papers. It answers questions only from the uploaded material, attaches a page-level citation to every supported claim, and opens the exact PDF page behind each citation.
+
+> Status: working v0.1 MVP. Text-based PDFs, single user, Windows-first.
+
+## Why CiteMind
+
+Most document chat demos optimize for a fluent answer. CiteMind optimizes for a verifiable answer:
+
+- answers are grounded in one course or one selected document;
+- citations are server-validated and cannot name a source the retriever did not supply;
+- every citation contains the file, PDF page, and original excerpt;
+- clicking evidence opens and highlights the matching PDF page;
+- weak retrieval produces “no reliable evidence” instead of a confident guess.
+
+## Quick start
+
+Requirements: Windows 11, Python 3.12, Node.js 20+, and an OpenAI-compatible chat API key.
+
+```powershell
+Copy-Item .env.example .env
+# Add OPENAI_API_KEY to .env
+.\start.ps1
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The first document takes longer because CiteMind downloads a multilingual local embedding model (about 220 MB) once.
+
+For development, run the backend and frontend separately:
+
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\pip install -r requirements.txt
+.\.venv\Scripts\uvicorn app.main:app --reload --env-file ..\.env
+```
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+## Product flow
+
+1. Create one course.
+2. Add text-based PDF lectures, notes, or papers.
+3. Ask across the course or limit the scope to one document.
+4. Open any citation to inspect the original page and highlighted evidence.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    PDF["Text PDF"] --> Parse["Page-preserving parser"]
+    Parse --> Chunks["Paragraph chunks<br/>never cross a page"]
+    Chunks --> FTS["SQLite FTS5"]
+    Chunks --> Local["Local multilingual embeddings"]
+    Q["Student question"] --> Hybrid["Hybrid retrieval"]
+    FTS --> Hybrid
+    Local --> Hybrid
+    Hybrid --> Evidence["Numbered evidence"]
+    Evidence --> LLM["Configured chat API"]
+    LLM --> Gate["Citation validator"]
+    Gate --> UI["Answer + file + page + excerpt"]
+```
+
+The stack is intentionally small: React, FastAPI, SQLite/FTS5, PyMuPDF, PDF.js, and FastEmbed. Vectors are JSON rows in SQLite and cosine-ranked in process; this is appropriate for personal course libraries and avoids running a vector database.
+
+## Privacy boundary
+
+- Original PDFs, extracted text, SQLite data, chat history, and embeddings stay in `backend/data/`.
+- Embeddings are generated locally with a multilingual ONNX model.
+- Only the question, up to eight retrieved excerpts, and at most two recent conversation turns go to the configured chat service.
+- API keys are read from `.env`; document text and keys are not logged by CiteMind.
+- Deleting a document removes its file and index and clears that course's chat history.
+
+Do not upload material you are not allowed to process. Your AI provider's retention terms still apply to the excerpts sent for answering.
+
+## Deliberate limits
+
+- PDF only; no OCR, Word, or PowerPoint
+- selectable-text PDFs up to 25 MB and 200 pages
+- one local user; no accounts, sync, or collaboration
+- no cross-course questions
+- one configurable OpenAI-compatible chat provider
+- no summaries, flashcards, quiz generation, or knowledge graph
+
+## Quality gates
+
+Run the focused backend checks and the production frontend build:
+
+```powershell
+cd backend
+.\.venv\Scripts\python -m pytest -q
+cd ..\frontend
+npm run build
+```
+
+The tests cover page provenance, scanned-PDF rejection, complete deletion, the full ask/citation response, and rejection of fabricated or mismatched citation numbers.
+
+The self-authored demo course and 20-question retrieval benchmark live in `sample-data/`. Generate the PDF, upload it, and evaluate its top-5 page recall:
+
+```powershell
+backend\.venv\Scripts\python sample-data\build_sample.py
+backend\.venv\Scripts\python backend\evaluate.py --local
+```
+
+Current bundled benchmark: **20/20 questions (100%)** retrieve the annotated page in the top five, against an 80% release threshold. Displayed citation identifiers are server-validated; fabricated or mismatched identifiers fail closed.
+
+See the dated [validation report](docs/VALIDATION.md) for the complete test matrix, including the measured 3.47-second warm-cache indexing time for a generated 100-page text PDF.
+
+## Repository map
+
+```text
+backend/app/       API, storage, retrieval, and citation validation
+backend/tests/     focused risk-chain tests
+frontend/src/      React workspace and PDF evidence viewer
+sample-data/       self-authored demo course and retrieval benchmark
+ROADMAP.md         frozen v1 scope and later ideas
+```
+
+## Known risks
+
+PDF text extraction can scramble unusually complex multi-column layouts. Prompt injection inside source files is treated as untrusted reference text, but no LLM control is absolute. Always inspect cited evidence before relying on an answer.
+
+## License
+
+[MIT](LICENSE). The generated demo document is also released under CC0-1.0.
