@@ -122,6 +122,8 @@ See the dated [validation report](docs/VALIDATION.md) for the complete test matr
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
+The current engineering candidate is documented in the [v0.1.0 release notes](docs/RELEASE_NOTES_v0.1.0.md). It is not represented as v1.0 until the real-course gate passes.
+
 ## Repository map
 
 ```text
