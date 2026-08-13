@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.1.2 - 2026-08-13
+
+### Fixed
+
+- Rejected document scopes that belong to another course before retrieval.
+- Closed PDF handles before rejecting files over the 200-page limit.
+- Removed uploaded originals after corrupt-PDF, page-limit, and embedding failures.
+- Split adjacent Chinese sentences without requiring whitespace after punctuation.
+
+### Added
+
+- Self-authored five-page Chinese demo course with ten annotated questions.
+- Bilingual retrieval evaluation across English and Chinese documents in one course.
+
+### Validated
+
+- 19 focused backend checks
+- 30/30 bilingual top-five page recall
+
 ## 0.1.1 - 2026-08-13
 
 ### Fixed

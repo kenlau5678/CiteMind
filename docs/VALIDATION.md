@@ -4,7 +4,7 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 
 | Requirement | Evidence | Result |
 | --- | --- | --- |
-| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 14/14 passed |
+| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 19/19 passed |
 | Production frontend | `cd frontend; npm run build` | Passed |
 | Page provenance | Generated two-page PDF test | Text stayed on PDF pages 1 and 2 |
 | Citation integrity | Invalid, fabricated, and mismatched citation tests | All rejected |
@@ -12,7 +12,11 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 | Insufficient-evidence protocol | Explicit insufficient answer | Accepted only with zero citations |
 | Complete document deletion | API integration test | File endpoint, chunks, and course chat removed |
 | Scanned-PDF handling | Empty-image PDF integration test | Rejected with an explicit OCR limitation |
-| Retrieval quality | 20 manually annotated demo questions | 20/20 top-five page recall (100%) |
+| Failed-upload cleanup | Corrupt, 201-page, and embedding-failure integration tests | No original file remained |
+| Course isolation | Document from course A used as scope in course B | Rejected before retrieval |
+| Chinese chunking | Adjacent Chinese sentences without spaces | Split at Chinese punctuation |
+| Retrieval quality | 30 manually annotated English and Chinese questions in one course | 30/30 top-five page recall (100%) |
+| Chinese PDF rendering | Poppler rendered all five A4 pages at 120 DPI; every page inspected | No missing glyphs, clipping, overlap, or footer errors |
 | 100-page indexing | Generated 100-page text PDF, warm local model cache | 3.47 seconds |
 | Citation navigation | Browser interaction against production build | Opened PDF page 8 and rendered six evidence highlights |
 | Scope isolation | Browser switched course-wide chat to one document | Old messages cleared, new scope selected, no dialog or console error |

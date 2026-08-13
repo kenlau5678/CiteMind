@@ -109,20 +109,20 @@ npm run build
 
 The tests cover page provenance, scanned-PDF rejection, complete deletion, the full ask/citation response, insufficient-evidence handling, and rejection of fabricated, mismatched, or unsupported answers.
 
-The self-authored demo course and 20-question retrieval benchmark live in `sample-data/`. Generate the PDF, upload it, and evaluate its top-5 page recall:
+The self-authored English and Chinese demo courses and 30-question retrieval benchmark live in `sample-data/`. Generate the PDFs, index both in one temporary course, and evaluate top-5 page recall:
 
 ```powershell
 backend\.venv\Scripts\python sample-data\build_sample.py
 backend\.venv\Scripts\python backend\evaluate.py --local
 ```
 
-Current bundled benchmark: **20/20 questions (100%)** retrieve the annotated page in the top five, against an 80% release threshold. Displayed citation identifiers are server-validated; fabricated or mismatched identifiers fail closed.
+Current bundled benchmark: **30/30 English and Chinese questions (100%)** retrieve the annotated page in the top five, against an 80% release threshold. Both language sets are searched together in one course. Displayed citation identifiers are server-validated; fabricated or mismatched identifiers fail closed.
 
 See the dated [validation report](docs/VALIDATION.md) for the complete test matrix, including the measured 3.47-second warm-cache indexing time for a generated 100-page text PDF.
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
-The current engineering candidate is documented in the [v0.1.1 release notes](docs/RELEASE_NOTES_v0.1.1.md). It is not represented as v1.0 until the real-course gate passes.
+The current engineering candidate is documented in the [v0.1.2 release notes](docs/RELEASE_NOTES_v0.1.2.md). It is not represented as v1.0 until the real-course gate passes.
 
 ## Repository map
 

@@ -14,7 +14,7 @@ This file protects the v1 scope. New ideas belong here until the core path—sta
 - [x] destructive deletion confirmation and cascading cleanup
 - [x] 25 MB / 200-page limits and scanned-PDF error
 - [x] focused automated tests
-- [x] benchmark top-5 page recall ≥ 80% (20/20 on bundled demo set)
+- [x] benchmark top-5 page recall ≥ 80% (30/30 across English and Chinese demo sets)
 - [ ] three real-course learning sessions
 - [x] 3 screenshots and an 18-second demo video
 - [ ] GitHub Release `v1.0.0`

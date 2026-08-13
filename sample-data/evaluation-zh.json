@@ -1,0 +1,12 @@
+[
+  {"question":"监督学习和无监督学习的主要区别是什么？","file":"citemind-demo-course-zh.pdf","page":1},
+  {"question":"开始机器学习项目之前应该先明确什么？","file":"citemind-demo-course-zh.pdf","page":1},
+  {"question":"验证集在模型开发中有什么用途？","file":"citemind-demo-course-zh.pdf","page":2},
+  {"question":"为什么数据泄漏会让评估结果过于乐观？","file":"citemind-demo-course-zh.pdf","page":2},
+  {"question":"反向传播如何计算参数梯度？","file":"citemind-demo-course-zh.pdf","page":3},
+  {"question":"学习率控制梯度下降中的什么？","file":"citemind-demo-course-zh.pdf","page":3},
+  {"question":"卷积层为什么可以减少参数数量？","file":"citemind-demo-course-zh.pdf","page":4},
+  {"question":"神经网络中的感受野是什么意思？","file":"citemind-demo-course-zh.pdf","page":4},
+  {"question":"关键词检索和语义检索各自擅长什么？","file":"citemind-demo-course-zh.pdf","page":5},
+  {"question":"为什么课程资料适合使用混合检索？","file":"citemind-demo-course-zh.pdf","page":5}
+]

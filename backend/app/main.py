@@ -26,7 +26,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="CiteMind API", version="0.1.1", lifespan=lifespan)
+app = FastAPI(title="CiteMind API", version="0.1.2", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -61,7 +61,11 @@ def split_page(text: str) -> list[str]:
     clean = re.sub(r"[ \t]+", " ", text).strip()
     if not clean:
         return []
-    paragraphs = [part.strip() for part in re.split(r"\n\s*\n|(?<=[.!?。！？])\s+", clean) if part.strip()]
+    paragraphs = [
+        part.strip()
+        for part in re.split(r"\n\s*\n|(?<=[。！？])|(?<=[.!?])\s+", clean)
+        if part.strip()
+    ]
     chunks, current = [], ""
     for paragraph in paragraphs:
         if current and len(current) + len(paragraph) + 1 > 2800:
@@ -111,6 +115,14 @@ def _keyword_results(db, course_id: int, query: str, document_id: int | None, li
 
 def search_chunks(course_id: int, request: SearchRequest):
     require_course(course_id)
+    if request.document_id is not None:
+        with connect() as db:
+            scoped_document = db.execute(
+                "SELECT 1 FROM documents WHERE id=? AND course_id=?",
+                (request.document_id, course_id),
+            ).fetchone()
+        if not scoped_document:
+            raise HTTPException(404, "Document not found in this course")
     try:
         query_vector = ai.embed([request.query])[0]
     except ai.AIError as exc:
@@ -203,6 +215,7 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
     stored_name = f"{uuid.uuid4().hex}.pdf"
     target = FILES_DIR / stored_name
     size = 0
+    keep_file = False
     try:
         with target.open("wb") as output:
             while block := file.file.read(1024 * 1024):
@@ -210,11 +223,10 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
                 if size > MAX_FILE_BYTES:
                     raise HTTPException(413, "File exceeds the 25 MB limit")
                 output.write(block)
-        pdf = fitz.open(target)
-        if pdf.page_count > MAX_PAGES:
-            raise HTTPException(413, "PDF exceeds the 200-page limit")
-        pages = [(index + 1, pdf.load_page(index).get_text("text")) for index in range(pdf.page_count)]
-        pdf.close()
+        with fitz.open(target) as pdf:
+            if pdf.page_count > MAX_PAGES:
+                raise HTTPException(413, "PDF exceeds the 200-page limit")
+            pages = [(index + 1, pdf.load_page(index).get_text("text")) for index in range(pdf.page_count)]
         pieces = [(page, chunk) for page, text in pages for chunk in split_page(text)]
         if not pieces:
             raise HTTPException(422, "No selectable text found. Scanned PDFs are not supported yet")
@@ -232,13 +244,16 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
                 "INSERT INTO chunks(document_id,course_id,page_number,content,embedding) VALUES (?,?,?,?,?)",
                 [(document_id, course_id, page, content, json.dumps(vector)) for (page, content), vector in zip(pieces, vectors)],
             )
-            return dict(db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone())
+            document = dict(db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone())
+        keep_file = True
+        return document
     except HTTPException:
-        target.unlink(missing_ok=True)
         raise
     except (fitz.FileDataError, ai.AIError) as exc:
-        target.unlink(missing_ok=True)
         raise HTTPException(422 if isinstance(exc, fitz.FileDataError) else 503, str(exc)) from exc
+    finally:
+        if not keep_file:
+            target.unlink(missing_ok=True)
 
 
 @app.get("/api/documents/{document_id}/file")

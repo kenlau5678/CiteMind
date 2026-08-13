@@ -13,7 +13,10 @@ def main():
     parser.add_argument("--url", default="http://127.0.0.1:8000")
     parser.add_argument("--local", action="store_true", help="Create a temporary course and evaluate it in process")
     args = parser.parse_args()
-    cases = json.loads((Path(__file__).parents[1] / "sample-data" / "evaluation.json").read_text(encoding="utf-8"))
+    sample_dir = Path(__file__).parents[1] / "sample-data"
+    cases = []
+    for case_file in sorted(sample_dir.glob("evaluation*.json")):
+        cases.extend(json.loads(case_file.read_text(encoding="utf-8")))
     if not args.local and not args.course_id:
         parser.error("--course-id is required unless --local is used")
     hits = 0
@@ -25,14 +28,15 @@ def main():
         client = TestClient(app)
         client.__enter__()
         course = client.post("/api/courses", json={"name": "Demo Machine Learning"}).json()
-        pdf = Path(__file__).parents[1] / "sample-data" / "citemind-demo-course.pdf"
-        with pdf.open("rb") as source:
-            upload = client.post(
-                f"/api/courses/{course['id']}/documents",
-                data={"kind": "lecture"},
-                files={"file": (pdf.name, source, "application/pdf")},
-            )
-        upload.raise_for_status()
+        for filename in sorted({case["file"] for case in cases}):
+            pdf = sample_dir / filename
+            with pdf.open("rb") as source:
+                upload = client.post(
+                    f"/api/courses/{course['id']}/documents",
+                    data={"kind": "lecture"},
+                    files={"file": (pdf.name, source, "application/pdf")},
+                )
+            upload.raise_for_status()
         args.course_id = course["id"]
     else:
         client = httpx.Client(timeout=120)
