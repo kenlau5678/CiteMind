@@ -26,6 +26,11 @@ export const api = {
     form.append("file", file);
     return request<Document>(`/api/courses/${courseId}/documents`, { method: "POST", body: form });
   },
+  reorderDocuments: (courseId: number, documentIds: number[]) => request<void>(`/api/courses/${courseId}/documents/order`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ document_ids: documentIds }),
+  }),
   retryDocument: (id: number) => request<Document>(`/api/documents/${id}/retry`, { method: "POST" }),
   deleteDocument: (id: number) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
   messages: (courseId: number) => request<Message[]>(`/api/courses/${courseId}/messages`),

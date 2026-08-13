@@ -20,6 +20,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [showUpload, setShowUpload] = useState(false);
+  const [draggedDocumentId, setDraggedDocumentId] = useState<number | null>(null);
   const [aiConfigured, setAiConfigured] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -132,6 +133,24 @@ export default function App() {
     } catch (reason) { showError(reason); }
   }
 
+  async function moveDocument(documentId: number, targetId: number) {
+    if (!courseId || documentId === targetId) return;
+    const previous = documents;
+    const from = previous.findIndex((item) => item.id === documentId);
+    const to = previous.findIndex((item) => item.id === targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...previous];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setDocuments(next);
+    try {
+      await api.reorderDocuments(courseId, next.map((item) => item.id));
+    } catch (reason) {
+      setDocuments(previous);
+      showError(reason);
+    }
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -166,8 +185,28 @@ export default function App() {
 
           <div className="source-strip">
             {documents.map((document) => (
-              <article key={document.id} className={`${activeDocument?.id === document.id ? "source-card active" : "source-card"} ${document.status}`} onClick={() => { setActiveDocument(document); setPage(1); setHighlight(undefined); }}>
+              <article
+                key={document.id}
+                draggable
+                className={`${activeDocument?.id === document.id ? "source-card active" : "source-card"} ${document.status} ${draggedDocumentId === document.id ? "dragging" : ""}`}
+                onClick={() => { setActiveDocument(document); setPage(1); setHighlight(undefined); }}
+                onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", String(document.id)); setDraggedDocumentId(document.id); }}
+                onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
+                onDrop={(event) => { event.preventDefault(); const sourceId = Number(event.dataTransfer.getData("text/plain")) || draggedDocumentId; if (sourceId) void moveDocument(sourceId, document.id); setDraggedDocumentId(null); }}
+                onDragEnd={() => setDraggedDocumentId(null)}
+              >
                 <span className={`kind ${document.kind}`}>{kindNames[document.kind]}</span>
+                <button
+                  className="drag-handle"
+                  aria-label={`Reorder ${document.title}. Use left and right arrow keys.`}
+                  title="Drag to reorder"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => {
+                    const offset = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+                    const target = documents[documents.findIndex((item) => item.id === document.id) + offset];
+                    if (offset && target) { event.preventDefault(); void moveDocument(document.id, target.id); }
+                  }}
+                >⠿</button>
                 <strong title={document.title}>{document.title}</strong>
                 {document.status === "processing" && <small className="document-progress">OCR {document.processed_pages} / {document.page_count} pages<progress aria-label={`OCR progress for ${document.title}`} value={document.processed_pages} max={document.page_count} /></small>}
                 {document.status === "failed" && <small className="document-failed" title={document.error ?? undefined}>{document.processed_pages < document.page_count ? `Paused at page ${document.processed_pages + 1}` : "Needs attention"}</small>}

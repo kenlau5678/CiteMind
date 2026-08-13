@@ -330,6 +330,26 @@ def test_document_scope_cannot_cross_courses(client, sample_pdf):
     assert response.json()["detail"] == "Document not found in this course"
 
 
+def test_document_order_is_persisted_and_validated(client, sample_pdf):
+    http, _, _ = client
+    course_id = create_course(http)
+    first = upload(http, course_id, sample_pdf)
+    second = upload(http, course_id, sample_pdf)
+    assert [item["id"] for item in http.get(f"/api/courses/{course_id}/documents").json()] == [second["id"], first["id"]]
+
+    response = http.put(
+        f"/api/courses/{course_id}/documents/order",
+        json={"document_ids": [first["id"], second["id"]]},
+    )
+    assert response.status_code == 204
+    assert [item["id"] for item in http.get(f"/api/courses/{course_id}/documents").json()] == [first["id"], second["id"]]
+    invalid = http.put(
+        f"/api/courses/{course_id}/documents/order",
+        json={"document_ids": [first["id"], first["id"]]},
+    )
+    assert invalid.status_code == 422
+
+
 def test_rephrased_chinese_query_uses_local_bigram_retrieval(client):
     http, _, db_module = client
     course_id = create_course(http)

@@ -35,6 +35,7 @@ def init_db() -> None:
                 size_bytes INTEGER NOT NULL,
                 page_count INTEGER NOT NULL DEFAULT 0,
                 processed_pages INTEGER NOT NULL DEFAULT 0,
+                sort_order INTEGER NOT NULL DEFAULT 0,
                 status TEXT NOT NULL DEFAULT 'processing',
                 error TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -92,6 +93,17 @@ def init_db() -> None:
         columns = {row[1] for row in db.execute("PRAGMA table_info(documents)")}
         if "processed_pages" not in columns:
             db.execute("ALTER TABLE documents ADD COLUMN processed_pages INTEGER NOT NULL DEFAULT 0")
+        if "sort_order" not in columns:
+            db.execute("ALTER TABLE documents ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0")
+            for course in db.execute("SELECT id FROM courses"):
+                document_ids = db.execute(
+                    "SELECT id FROM documents WHERE course_id=? ORDER BY created_at DESC,id DESC",
+                    (course[0],),
+                ).fetchall()
+                db.executemany(
+                    "UPDATE documents SET sort_order=? WHERE id=?",
+                    [(index, row[0]) for index, row in enumerate(document_ids)],
+                )
         db.execute(
             "UPDATE documents SET status='failed', error='Processing was interrupted. Retry to continue.' "
             "WHERE status='processing'"

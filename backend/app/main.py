@@ -115,6 +115,10 @@ class CourseCreate(BaseModel):
     name: str = Field(min_length=1, max_length=80)
 
 
+class DocumentOrder(BaseModel):
+    document_ids: list[int] = Field(min_length=1)
+
+
 class SearchRequest(BaseModel):
     query: str = Field(min_length=1, max_length=500)
     document_id: int | None = None
@@ -372,7 +376,23 @@ def delete_course(course_id: int):
 def list_documents(course_id: int):
     require_course(course_id)
     with connect() as db:
-        return rows(db.execute("SELECT * FROM documents WHERE course_id=? ORDER BY created_at DESC", (course_id,)).fetchall())
+        return rows(db.execute(
+            "SELECT * FROM documents WHERE course_id=? ORDER BY sort_order,created_at DESC",
+            (course_id,),
+        ).fetchall())
+
+
+@app.put("/api/courses/{course_id}/documents/order", status_code=204)
+def reorder_documents(course_id: int, body: DocumentOrder):
+    require_course(course_id)
+    with connect() as db:
+        current_ids = [row[0] for row in db.execute("SELECT id FROM documents WHERE course_id=?", (course_id,))]
+        if len(body.document_ids) != len(current_ids) or set(body.document_ids) != set(current_ids):
+            raise HTTPException(422, "Document order must include every document in this course exactly once")
+        db.executemany(
+            "UPDATE documents SET sort_order=? WHERE id=?",
+            [(index, document_id) for index, document_id in enumerate(body.document_ids)],
+        )
 
 
 def process_scanned_document(document_id: int) -> None:
@@ -470,10 +490,13 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
                 raise HTTPException(503, "Scanned PDF pages require OPENAI_API_KEY for visual OCR")
         if scans:
             with connect() as db:
+                sort_order = db.execute(
+                    "SELECT COALESCE(min(sort_order),0)-1 FROM documents WHERE course_id=?", (course_id,)
+                ).fetchone()[0]
                 cursor = db.execute(
-                    """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,status)
-                       VALUES (?,?,?,?,?,?,?,'processing')""",
-                    (course_id, Path(file.filename).stem, kind, file.filename, stored_name, size, len(pages)),
+                    """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,sort_order,status)
+                       VALUES (?,?,?,?,?,?,?,?,'processing')""",
+                    (course_id, Path(file.filename).stem, kind, file.filename, stored_name, size, len(pages), sort_order),
                 )
                 document_id = cursor.lastrowid
                 document = dict(db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone())
@@ -491,10 +514,13 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
         for start in range(0, len(pieces), 64):
             vectors.extend(ai.embed([content for _, content in pieces[start:start + 64]]))
         with connect() as db:
+            sort_order = db.execute(
+                "SELECT COALESCE(min(sort_order),0)-1 FROM documents WHERE course_id=?", (course_id,)
+            ).fetchone()[0]
             cursor = db.execute(
-                """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,processed_pages,status)
-                   VALUES (?,?,?,?,?,?,?,?,'ready')""",
-                (course_id, Path(file.filename).stem, kind, file.filename, stored_name, size, len(pages), len(pages)),
+                """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,processed_pages,sort_order,status)
+                   VALUES (?,?,?,?,?,?,?,?,?,'ready')""",
+                (course_id, Path(file.filename).stem, kind, file.filename, stored_name, size, len(pages), len(pages), sort_order),
             )
             document_id = cursor.lastrowid
             db.executemany(
