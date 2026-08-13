@@ -15,6 +15,7 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 | Retrieval quality | 20 manually annotated demo questions | 20/20 top-five page recall (100%) |
 | 100-page indexing | Generated 100-page text PDF, warm local model cache | 3.47 seconds |
 | Citation navigation | Browser interaction against production build | Opened PDF page 8 and rendered six evidence highlights |
+| Scope isolation | Browser switched course-wide chat to one document | Old messages cleared, new scope selected, no dialog or console error |
 | Browser runtime errors | Browser console after citation navigation | None |
 | One-command startup | `.\start.ps1`, then `/api/health` | `{"status":"ok"}` |
 | Demo video | `ffprobe` | H.264, 1280×720, 30 fps, 18 seconds |
