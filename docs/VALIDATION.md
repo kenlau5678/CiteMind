@@ -4,7 +4,7 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 
 | Requirement | Evidence | Result |
 | --- | --- | --- |
-| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 27/27 passed |
+| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 30/30 passed |
 | Production frontend | `cd frontend; npm run build` | Passed |
 | Clean dependency install | Empty verification directories; fresh Python virtual environment and `npm ci` | 25/25 backend checks and production frontend build passed |
 | Page provenance | Generated two-page PDF test | Text stayed on PDF pages 1 and 2 |
@@ -31,6 +31,10 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 | Added mechanics AI answers | Three real cross-document questions with retry after two transient provider disconnects | 3/3 supported answers returned valid citations to the intended PDFs and pages |
 | Added mechanics citation navigation | Production browser opened the friction-angle citation | Original-page preview loaded and opened page 4/25 with no browser errors |
 | Complete-course extension | Twelve questions across particle dynamics, general theorems, collision, and Lagrange mechanics | 12/12 expected pages appeared in the top five; three real AI answers returned valid citations |
+| Selective visual gate | Generated text-only and vector-diagram pages | Text page skipped locally; diagram page selected without an API call |
+| Visual cache and fallback | Focused API integration tests | First analysis cached by document/page; repeat reused it; model failures fell back to text RAG |
+| Real visual mechanics answer | Generalized-force question against the original formula page | `gpt-5.6-luna` cache plus `gpt-5.6-terra` answer succeeded in 16.61 s; repeat succeeded in 8.31 s |
+| Visual citation navigation | Production browser against the real visual answer | `视觉核对` badge visible; original-page preview loaded; citation opened page 4/16; zero browser errors |
 | Private document-scoped revision | Three real questions; every citation clicked | 3/3 useful answers; 6/6 direct page citations |
 | Chinese short-fragment highlighting | Real private citation page | Improved from zero to five highlights |
 | AI formula rendering | Production browser with six formulas | Inline/display math, subscripts, superscripts, fraction, integral, root, and matrix rendered; no browser errors |

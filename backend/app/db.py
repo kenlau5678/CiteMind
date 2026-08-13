@@ -75,6 +75,17 @@ def init_db() -> None:
                 scope_document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS page_visuals (
+                id INTEGER PRIMARY KEY,
+                document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+                page_number INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                description TEXT,
+                model TEXT,
+                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(document_id, page_number)
+            );
             """
         )
 
@@ -99,4 +110,3 @@ def decode_message(row):
     item = dict(row)
     item["citations"] = json.loads(item["citations"])
     return item
-

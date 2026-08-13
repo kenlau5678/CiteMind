@@ -23,6 +23,7 @@ export type Citation = {
   title: string;
   page_number: number;
   content: string;
+  visual?: boolean;
 };
 
 export type Message = {
@@ -30,5 +31,5 @@ export type Message = {
   role: "user" | "assistant";
   content: string;
   citations: Citation[];
+  vision_used?: boolean;
 };
-

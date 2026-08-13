@@ -82,7 +82,7 @@ export default function App() {
     setBusy(true);
     try {
       const result = await api.ask(courseId, text, scopeDocumentId);
-      setMessages((current) => [...current, { role: "assistant", content: result.answer, citations: result.citations }]);
+      setMessages((current) => [...current, { role: "assistant", content: result.answer, citations: result.citations, vision_used: result.vision_used }]);
     } catch (reason) {
       setMessages((current) => current.slice(0, -1));
       setQuestion(text);
@@ -182,7 +182,7 @@ export default function App() {
                     {!!message.citations?.length && <div className="citations">
                       {message.citations.map((citation) => (
                         <button key={citation.number} aria-label={`打开 ${citation.title} 第 ${citation.page_number} 页`} onClick={() => openCitation(citation)}>
-                          <span className="citation-source">[{citation.number}] {citation.title} · p.{citation.page_number}</span>
+                          <span className="citation-source">[{citation.number}] {citation.title} · p.{citation.page_number}{citation.visual && <em>视觉核对</em>}</span>
                           <CitationPreview documentId={citation.document_id} page={citation.page_number} content={citation.content} />
                           <small className="citation-open-hint">打开第 {citation.page_number} 页细看 <b>→</b></small>
                         </button>

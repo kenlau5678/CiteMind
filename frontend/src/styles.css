@@ -97,6 +97,7 @@ button { color: inherit; }
 .citations button { text-align: left; border: 1px solid #d9ddd5; background: #fff; border-radius: 8px; padding: 9px; cursor: pointer; }
 .citations button:hover { border-color: #789487; background: #f7faf7; box-shadow: 0 3px 12px #344a3e12; }
 .citation-source { color: var(--sage); display: block; padding: 0 1px; font-size: 10px; font-weight: 700; }
+.citation-source em { float: right; padding: 2px 5px; border-radius: 8px; background: #e6f0ea; color: #3f6653; font-size: 8px; font-style: normal; }
 .citation-preview { position: relative; display: none; overflow: hidden; margin-top: 8px; min-height: 82px; border: 1px solid #e1e3dc; border-radius: 6px; background: #f3f3ef; }
 .citation-preview.ready { display: block; }
 .citation-preview canvas { display: block; width: 100%; height: auto; background: white; }

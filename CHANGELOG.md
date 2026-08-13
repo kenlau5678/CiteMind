@@ -6,14 +6,18 @@
 
 - Decode additional font-gated legacy `Symbol` operators used in mechanics PDFs, including inequalities, sums, integrals, dot products, angles, derivatives, and degrees.
 - Cover both successful operator decoding and ambiguous-font refusal with focused regression tests.
+- Detect visually important PDF pages locally, inspect at most one relevant original page on visual questions, and cache the page description by document and page.
+- Use `gpt-5.6-luna` for cached page analysis and `gpt-5.6-terra` for the final multimodal answer, with a visible `视觉核对` citation badge.
+- Fall back to the existing text RAG path if either visual model is unavailable.
 
 ### Validated
 
-- 27 focused backend checks, a production frontend build, and 30/30 public bilingual retrieval questions.
+- 30 focused backend checks, a production frontend build, and 30/30 public bilingual retrieval questions.
 - Nineteen additional private mechanics PDFs across statics, dynamics, and analytical mechanics, bringing the local course to 26 documents and 655 selectable-text pages.
 - 7/7 added mechanics questions retrieved their expected page in the top five; every expected result ranked first or second.
 - 12/12 complete-course extension questions retrieved their expected page in the top five; three real AI answers returned valid chapter citations.
 - Production-browser citation previews loaded as original-page images, and the friction-angle citation opened page 4/25 with no browser errors.
+- A real generalized-force page used vision successfully in 16.61 seconds; the cached repeat completed in 8.31 seconds and opened page 4/16 with no browser errors.
 
 ## 0.1.7 - 2026-08-13
 

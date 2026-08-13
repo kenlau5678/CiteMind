@@ -59,6 +59,34 @@ def extract_page_text(page: fitz.Page) -> str:
     return normalize_private_glyphs(page.get_text("text", sort=True), glyph_fonts)
 
 
+def visual_page_reason(page: fitz.Page, text: str) -> str | None:
+    """Cheap local gate: only pages with meaningful visual detail may call a vision model."""
+    page_area = max(page.rect.width * page.rect.height, 1)
+    image_area = sum(
+        max(0, block["bbox"][2] - block["bbox"][0]) * max(0, block["bbox"][3] - block["bbox"][1])
+        for block in page.get_text("dict")["blocks"] if block.get("type") == 1
+    )
+    raw = page.get_text("text")
+    if image_area / page_area >= 0.08:
+        return "large_image"
+    drawings = len(page.get_drawings())
+    if drawings and (drawings >= 4 or len(text) < 1200):
+        return "vector_diagram"
+    if sum("\ue000" <= char <= "\uf8ff" for char in raw) >= 3:
+        return "legacy_formula"
+    if sum(text.count(marker) for marker in ("=", "∑", "∫", "√", "∂", "×")) >= 4:
+        return "formula_dense"
+    return None
+
+
+def question_requests_vision(question: str) -> bool:
+    lowered = question.lower()
+    return any(term in lowered for term in (
+        "图", "曲线", "坐标", "箭头", "受力", "机构", "公式", "方程", "矩阵",
+        "diagram", "figure", "chart", "image", "graph", "formula", "equation", "matrix",
+    ))
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
@@ -296,6 +324,8 @@ def config():
     return {
         "ai_configured": bool(ai.API_KEY()),
         "chat_model": ai.CHAT_MODEL(),
+        "vision_index_model": ai.VISION_INDEX_MODEL(),
+        "vision_answer_model": ai.VISION_ANSWER_MODEL(),
         "embedding_model": ai.LOCAL_EMBEDDING_MODEL(),
     }
 
@@ -357,8 +387,12 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
         with fitz.open(target) as pdf:
             if pdf.page_count > MAX_PAGES:
                 raise HTTPException(413, "PDF exceeds the 200-page limit")
-            pages = [(index + 1, extract_page_text(pdf.load_page(index))) for index in range(pdf.page_count)]
-        pieces = [(page, chunk) for page, text in pages for chunk in split_page(text)]
+            pages = []
+            for index in range(pdf.page_count):
+                page = pdf.load_page(index)
+                text = extract_page_text(page)
+                pages.append((index + 1, text, visual_page_reason(page, text)))
+        pieces = [(page, chunk) for page, text, _ in pages for chunk in split_page(text)]
         if not pieces:
             raise HTTPException(422, "No selectable text found. Scanned PDFs are not supported yet")
         vectors = []
@@ -374,6 +408,10 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
             db.executemany(
                 "INSERT INTO chunks(document_id,course_id,page_number,content,embedding) VALUES (?,?,?,?,?)",
                 [(document_id, course_id, page, content, json.dumps(vector)) for (page, content), vector in zip(pieces, vectors)],
+            )
+            db.executemany(
+                "INSERT INTO page_visuals(document_id,page_number,reason) VALUES (?,?,?)",
+                [(document_id, page, reason) for page, _, reason in pages if reason],
             )
             document = dict(db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone())
         keep_file = True
@@ -428,6 +466,57 @@ def clear_messages(course_id: int):
         db.execute("DELETE FROM messages WHERE course_id=?", (course_id,))
 
 
+def prepare_visual_evidence(question: str, evidence: list[dict]) -> tuple[list[dict], list[dict]]:
+    if not ai.API_KEY() or not question_requests_vision(question) or ai.VISION_MAX_PAGES() == 0:
+        return evidence, []
+    enriched = [dict(item) for item in evidence]
+    images = []
+    seen: set[tuple[int, int]] = set()
+    for index, item in enumerate(enriched):
+        key = (item["document_id"], item["page_number"])
+        if key in seen:
+            continue
+        seen.add(key)
+        with connect() as db:
+            document = db.execute("SELECT stored_name FROM documents WHERE id=?", (item["document_id"],)).fetchone()
+            cached = db.execute(
+                "SELECT reason,description FROM page_visuals WHERE document_id=? AND page_number=?",
+                key,
+            ).fetchone()
+        if not document:
+            continue
+        with fitz.open(FILES_DIR / document["stored_name"]) as pdf:
+            page = pdf.load_page(item["page_number"] - 1)
+            reason = cached["reason"] if cached else visual_page_reason(page, extract_page_text(page))
+            if not reason:
+                continue
+            image = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False).tobytes("png")
+        description = cached["description"] if cached else None
+        if not description:
+            try:
+                description = ai.describe_page(image, item["content"])
+            except ai.AIError:
+                description = None
+        with connect() as db:
+            db.execute(
+                """INSERT INTO page_visuals(document_id,page_number,reason,description,model,updated_at)
+                   VALUES (?,?,?,?,?,CURRENT_TIMESTAMP)
+                   ON CONFLICT(document_id,page_number) DO UPDATE SET
+                   reason=excluded.reason,
+                   description=COALESCE(excluded.description,page_visuals.description),
+                   model=COALESCE(excluded.model,page_visuals.model),
+                   updated_at=CURRENT_TIMESTAMP""",
+                (item["document_id"], item["page_number"], reason, description,
+                 ai.VISION_INDEX_MODEL() if description else None),
+            )
+        if description:
+            item["visual_description"] = description
+        images.append({"number": index + 1, "image": image})
+        if len(images) >= ai.VISION_MAX_PAGES():
+            break
+    return enriched, images
+
+
 @app.post("/api/courses/{course_id}/ask")
 def ask(course_id: int, body: AskRequest):
     evidence = add_neighbor_context(search_chunks(course_id, body))
@@ -437,8 +526,17 @@ def ask(course_id: int, body: AskRequest):
         history = rows(db.execute(
             "SELECT role,content FROM messages WHERE course_id=? ORDER BY id DESC LIMIT 4", (course_id,)
         ).fetchall())[::-1]
+    visual_evidence, images = prepare_visual_evidence(body.query, evidence)
+    vision_used = False
     try:
-        result = ai.answer(body.query, evidence, history)
+        if images:
+            try:
+                result = ai.answer_with_images(body.query, visual_evidence, history, images)
+                vision_used = True
+            except ai.AIError:
+                result = ai.answer(body.query, evidence, history)
+        else:
+            result = ai.answer(body.query, evidence, history)
     except ai.AIError as exc:
         raise HTTPException(502, str(exc)) from exc
     citations = [
@@ -449,6 +547,7 @@ def ask(course_id: int, body: AskRequest):
             "title": evidence[number - 1]["title"],
             "page_number": evidence[number - 1]["page_number"],
             "content": evidence[number - 1]["content"],
+            "visual": vision_used and number in {item["number"] for item in images},
         }
         for number in result["citation_numbers"]
     ]
@@ -461,7 +560,10 @@ def ask(course_id: int, body: AskRequest):
             "INSERT INTO messages(course_id,role,content,citations,scope_document_id) VALUES (?,?,?,?,?)",
             (course_id, "assistant", result["answer"], json.dumps(citations), body.document_id),
         )
-    return {"answer": result["answer"], "citations": citations, "insufficient": result["insufficient"]}
+    return {
+        "answer": result["answer"], "citations": citations,
+        "insufficient": result["insufficient"], "vision_used": vision_used,
+    }
 
 
 FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"

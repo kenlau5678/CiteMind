@@ -30,7 +30,7 @@ export const api = {
   messages: (courseId: number) => request<Message[]>(`/api/courses/${courseId}/messages`),
   clearMessages: (courseId: number) => request<void>(`/api/courses/${courseId}/messages`, { method: "DELETE" }),
   ask: (courseId: number, query: string, documentId: number | null) =>
-    request<{ answer: string; citations: Message["citations"]; insufficient: boolean }>(`/api/courses/${courseId}/ask`, {
+    request<{ answer: string; citations: Message["citations"]; insufficient: boolean; vision_used: boolean }>(`/api/courses/${courseId}/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, document_id: documentId }),

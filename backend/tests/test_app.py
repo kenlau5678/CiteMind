@@ -1,6 +1,6 @@
 import json
 
-from app.main import normalize_private_glyphs, split_page
+from app.main import normalize_private_glyphs, split_page, visual_page_reason
 
 
 def create_course(client):
@@ -17,6 +17,17 @@ def upload(client, course_id, sample_pdf):
     )
     assert response.status_code == 201, response.text
     return response.json()
+
+
+def visual_pdf():
+    import fitz
+    pdf = fitz.open()
+    page = pdf.new_page()
+    page.insert_text((72, 90), "A free-body diagram shows force directions and equilibrium.")
+    page.draw_line((120, 180), (300, 180), width=3)
+    data = pdf.tobytes()
+    pdf.close()
+    return data
 
 
 def test_chinese_sentences_split_without_spaces():
@@ -57,6 +68,71 @@ def test_pdf_chunks_keep_real_page_numbers(client, sample_pdf):
     assert [row["page_number"] for row in chunks] == [1, 2]
     assert "Backpropagation" in chunks[0]["content"]
     assert "Convolution" in chunks[1]["content"]
+
+
+def test_visual_page_gate_is_local_and_selective():
+    import fitz
+    pdf = fitz.open()
+    plain = pdf.new_page()
+    plain.insert_text((72, 90), "A plain paragraph with no diagram.")
+    assert visual_page_reason(plain, plain.get_text()) is None
+    diagram = pdf.new_page()
+    diagram.insert_text((72, 90), "A mechanics diagram.")
+    diagram.draw_line((100, 160), (260, 160), width=2)
+    assert visual_page_reason(diagram, diagram.get_text()) == "vector_diagram"
+    pdf.close()
+
+
+def test_visual_analysis_is_cached_and_marks_its_citation(client, monkeypatch):
+    http, main, db_module = client
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    course_id = create_course(http)
+    document = upload(http, course_id, visual_pdf())
+    calls = {"describe": 0, "answer": 0}
+
+    def describe(*_):
+        calls["describe"] += 1
+        return '{"summary":"One force arrow.","confidence":0.9}'
+
+    def answer_with_images(_question, _evidence, _history, images):
+        calls["answer"] += 1
+        assert images[0]["image"].startswith(b"\x89PNG")
+        return {"answer": "The diagram shows a force direction [1].", "citation_numbers": [1], "insufficient": False}
+
+    monkeypatch.setattr(main.ai, "describe_page", describe)
+    monkeypatch.setattr(main.ai, "answer_with_images", answer_with_images)
+    for _ in range(2):
+        response = http.post(f"/api/courses/{course_id}/ask", json={"query": "What does the diagram show?"})
+        assert response.status_code == 200, response.text
+        assert response.json()["vision_used"] is True
+        assert response.json()["citations"][0]["visual"] is True
+    assert calls == {"describe": 1, "answer": 2}
+    with db_module.connect() as db:
+        cached = db.execute(
+            "SELECT description,model FROM page_visuals WHERE document_id=? AND page_number=1",
+            (document["id"],),
+        ).fetchone()
+    assert "force arrow" in cached["description"]
+    assert cached["model"] == main.ai.VISION_INDEX_MODEL()
+
+
+def test_visual_failure_falls_back_to_text_answer(client, monkeypatch):
+    http, main, _ = client
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    course_id = create_course(http)
+    upload(http, course_id, visual_pdf())
+    monkeypatch.setattr(main.ai, "describe_page", lambda *_: (_ for _ in ()).throw(main.ai.AIError("unavailable")))
+    monkeypatch.setattr(
+        main.ai, "answer_with_images",
+        lambda *_: (_ for _ in ()).throw(main.ai.AIError("unavailable")),
+    )
+    monkeypatch.setattr(main.ai, "answer", lambda *_: {
+        "answer": "Text evidence remains available [1].", "citation_numbers": [1], "insufficient": False,
+    })
+    response = http.post(f"/api/courses/{course_id}/ask", json={"query": "Explain the diagram"})
+    assert response.status_code == 200
+    assert response.json()["vision_used"] is False
+    assert response.json()["citations"][0]["visual"] is False
 
 
 def test_ask_returns_only_validated_source_metadata(client, sample_pdf, monkeypatch):

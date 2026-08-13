@@ -16,7 +16,7 @@
 
 CiteMind is a local-first course knowledge base for lecture notes, student notes, and papers. It answers questions only from the uploaded material, attaches a page-level citation to every supported claim, and opens the exact PDF page behind each citation.
 
-> Status: working v0.1 MVP. Text-based PDFs, single user, Windows-first.
+> Status: working v0.1 MVP. Text-based PDFs with on-demand page vision, single user, Windows-first.
 
 ## Why CiteMind
 
@@ -28,6 +28,7 @@ Most document chat demos optimize for a fluent answer. CiteMind optimizes for a 
 - clicking evidence opens and highlights the matching PDF page;
 - AI answers typeset inline and display LaTeX, including fractions and matrices;
 - known legacy `Symbol` formula glyphs are decoded for retrieval, while every citation retains an exact original-page visual preview;
+- diagram, plot, and formula questions can inspect one relevant original page with vision; page descriptions are cached after the first use;
 - weak retrieval produces “no reliable evidence” instead of a confident guess.
 
 ## Quick start
@@ -64,7 +65,8 @@ npm run dev
 1. Create one course.
 2. Add text-based PDF lectures, notes, or papers.
 3. Ask across the course or limit the scope to one document.
-4. Open any citation to inspect the original page and highlighted evidence.
+4. Visual questions selectively inspect a relevant original page and mark the citation as `视觉核对`.
+5. Open any citation to inspect the original page and highlighted evidence.
 
 ## Architecture
 
@@ -78,7 +80,11 @@ flowchart LR
     FTS --> Hybrid
     Local --> Hybrid
     Hybrid --> Evidence["Numbered evidence"]
-    Evidence --> LLM["Configured chat API"]
+    Evidence --> Visual{"Visual page needed?"}
+    Visual -->|No| LLM["Configured chat API"]
+    Visual -->|Yes| Page["Original PDF page<br/>cached visual description"]
+    Page --> Vision["Vision answer model"]
+    Vision --> Gate
     LLM --> Gate["Citation validator"]
     Gate --> UI["Answer + file + page + excerpt"]
 ```
@@ -89,7 +95,7 @@ The stack is intentionally small: React, FastAPI, SQLite/FTS5, PyMuPDF, PDF.js, 
 
 - Original PDFs, extracted text, SQLite data, chat history, and embeddings stay in `backend/data/`.
 - Embeddings are generated locally with a multilingual ONNX model.
-- Only the question, up to fourteen retrieved excerpts (including nearby-page context), and at most two recent conversation turns go to the configured chat service.
+- Only the question, up to fourteen retrieved excerpts (including nearby-page context), at most two recent conversation turns, and at most one relevant original-page image go to the configured AI service.
 - API keys are read from `.env`; document text and keys are not logged by CiteMind.
 - Deleting a document removes its file and index and clears that course's chat history.
 
@@ -101,7 +107,7 @@ Do not upload material you are not allowed to process. Your AI provider's retent
 - selectable-text PDFs up to 25 MB and 200 pages
 - one local user; no accounts, sync, or collaboration
 - no cross-course questions
-- one configurable OpenAI-compatible chat provider
+- one configurable OpenAI provider; visual analysis uses the Responses API
 - no summaries, flashcards, quiz generation, or knowledge graph
 
 ## Quality gates
@@ -115,7 +121,7 @@ cd ..\frontend
 npm run build
 ```
 
-The tests cover page provenance, scanned-PDF rejection, complete deletion, the full ask/citation response, insufficient-evidence handling, and rejection of fabricated, mismatched, or unsupported answers.
+The tests cover page provenance, scanned-PDF rejection, complete deletion, visual-page selection and caching, safe visual fallback, the full ask/citation response, insufficient-evidence handling, and rejection of fabricated, mismatched, or unsupported answers.
 
 The self-authored English and Chinese demo courses and 30-question retrieval benchmark live in `sample-data/`. Generate the PDFs, index both in one temporary course, and evaluate top-5 page recall:
 
