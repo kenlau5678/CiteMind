@@ -51,11 +51,17 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
       if (!canvas || cancelled) return;
       const context = canvas.getContext("2d");
       if (!context) return;
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
+      const outputScale = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(viewport.width * outputScale);
+      canvas.height = Math.floor(viewport.height * outputScale);
       canvas.style.width = `${viewport.width}px`;
       canvas.style.height = `${viewport.height}px`;
-      await pdfPage.render({ canvas, canvasContext: context, viewport }).promise;
+      await pdfPage.render({
+        canvas,
+        canvasContext: context,
+        viewport,
+        transform: outputScale === 1 ? undefined : [outputScale, 0, 0, outputScale, 0, 0],
+      }).promise;
 
       const overlay = overlayRef.current;
       if (overlay) {
