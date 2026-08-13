@@ -4,7 +4,7 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 
 | Requirement | Evidence | Result |
 | --- | --- | --- |
-| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 21/21 passed |
+| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 23/23 passed |
 | Production frontend | `cd frontend; npm run build` | Passed |
 | Page provenance | Generated two-page PDF test | Text stayed on PDF pages 1 and 2 |
 | Citation integrity | Invalid, fabricated, and mismatched citation tests | All rejected |
@@ -25,14 +25,19 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 | Chat transport failure | Provider disconnected during real validation plus focused test | Controlled 502; no raw 500 |
 | 100-page indexing | Generated 100-page text PDF, warm local model cache | 3.47 seconds |
 | Citation navigation | Browser interaction against production build | Opened PDF page 8 and rendered six evidence highlights |
+| Private tutorial ingestion | Seven user-supplied PDFs | 222/222 pages had selectable text and indexed successfully |
+| Private document-scoped revision | Three real questions; every citation clicked | 3/3 useful answers; 6/6 direct page citations |
+| Chinese short-fragment highlighting | Real private citation page | Improved from zero to five highlights |
+| Course-wide private comparison | Three broad cross-chapter questions | Partial: weak outline citations and one incorrect formula synthesis recorded locally |
 | Scope isolation | Browser switched course-wide chat to one document | Old messages cleared, new scope selected, no dialog or console error |
 | Browser runtime errors | Browser console after citation navigation | None |
 | One-command startup | `.\start.ps1`, then `/api/health` | `{"status":"ok"}` |
 | Demo video | `ffprobe` | H.264, 1280×720, 30 fps, 18 seconds |
 
-## Still requiring human acceptance
+## Still requiring acceptance
 
-- Three genuine learning sessions with private course material
+- A real course containing the required lecture, personal note, and paper source mix
+- A clean course-wide comparison session without weak outline citations or incorrect synthesis
 - Public GitHub repository and `v1.0.0` release
 
 These items are not represented as complete by demo data or mocked model responses.

@@ -81,7 +81,7 @@ The stack is intentionally small: React, FastAPI, SQLite/FTS5, PyMuPDF, PDF.js, 
 
 - Original PDFs, extracted text, SQLite data, chat history, and embeddings stay in `backend/data/`.
 - Embeddings are generated locally with a multilingual ONNX model.
-- Only the question, up to eight retrieved excerpts, and at most two recent conversation turns go to the configured chat service.
+- Only the question, up to fourteen retrieved excerpts (including nearby-page context), and at most two recent conversation turns go to the configured chat service.
 - API keys are read from `.env`; document text and keys are not logged by CiteMind.
 - Deleting a document removes its file and index and clears that course's chat history.
 
@@ -122,7 +122,7 @@ See the dated [validation report](docs/VALIDATION.md) for the complete test matr
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
-The current engineering candidate is documented in the [v0.1.3 release notes](docs/RELEASE_NOTES_v0.1.3.md). It has passed real API calls against the public demo material, but is not represented as v1.0 until the private real-course gate passes.
+The current engineering candidate is documented in the [v0.1.4 release notes](docs/RELEASE_NOTES_v0.1.4.md). It has completed three private tutorial sessions and exposed a course-wide comparison weakness; it is not represented as v1.0 until that path and the required lecture/notes/paper source mix pass.
 
 ## Repository map
 

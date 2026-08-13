@@ -186,3 +186,68 @@ def test_embedding_failure_leaves_no_file(client, sample_pdf, monkeypatch):
     )
     assert response.status_code == 503
     assert list(db_module.FILES_DIR.iterdir()) == []
+
+
+def test_ask_adds_neighbor_pages_to_heading_matches(client, monkeypatch):
+    http, main, db_module = client
+    course_id = create_course(http)
+    with db_module.connect() as db:
+        cursor = db.execute(
+            """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,status)
+               VALUES (?,?,?,?,?,?,?,'ready')""",
+            (course_id, "Motion", "lecture", "motion.pdf", "motion-test.pdf", 100, 4),
+        )
+        document_id = cursor.lastrowid
+        db.executemany(
+            "INSERT INTO chunks(document_id,course_id,page_number,content) VALUES (?,?,?,?)",
+            [(document_id, course_id, page, text) for page, text in [
+                (1, "Introduction"),
+                (2, "Angular velocity composition"),
+                (3, "Definitions"),
+                (4, "The explicit formula is omega equals omega relative plus omega transport."),
+            ]],
+        )
+    with db_module.connect() as db:
+        seed_rows = db.execute(
+            "SELECT id,page_number,content FROM chunks WHERE page_number IN (2,3) ORDER BY page_number"
+        ).fetchall()
+    seeds = [
+        {"id": row["id"], "document_id": document_id, "course_id": course_id,
+         "page_number": row["page_number"], "content": row["content"],
+         "title": "Motion", "filename": "motion.pdf"}
+        for row in seed_rows
+    ]
+    captured = {}
+    monkeypatch.setattr(main, "search_chunks", lambda *_: seeds)
+    monkeypatch.setattr(main.ai, "answer", lambda _q, evidence, _h: captured.update(evidence=evidence) or {
+        "answer": "Supported [3].", "citation_numbers": [3], "insufficient": False
+    })
+    response = http.post(f"/api/courses/{course_id}/ask", json={"query": "formula"})
+    assert response.status_code == 200
+    assert 4 in {item["page_number"] for item in captured["evidence"]}
+
+
+def test_formula_query_prefers_page_with_an_explicit_equation(client):
+    http, _, db_module = client
+    course_id = create_course(http)
+    with db_module.connect() as db:
+        cursor = db.execute(
+            """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,status)
+               VALUES (?,?,?,?,?,?,?,'ready')""",
+            (course_id, "Motion", "lecture", "motion.pdf", "formula-test.pdf", 100, 3),
+        )
+        document_id = cursor.lastrowid
+        db.executemany(
+            "INSERT INTO chunks(document_id,course_id,page_number,content) VALUES (?,?,?,?)",
+            [
+                (document_id, course_id, 1, "\u52a0\u901f\u5ea6\u5408\u6210\u516c\u5f0f \u76ee\u5f55"),
+                (document_id, course_id, 2, "\u52a0\u901f\u5ea6\u5408\u6210\u516c\u5f0f a \uf03d ae + ar + ac"),
+                (document_id, course_id, 3, "\u89d2\u901f\u5ea6\u5408\u6210\u516c\u5f0f w \uf03d we + wr"),
+            ],
+        )
+    response = http.post(
+        f"/api/courses/{course_id}/search",
+        json={"query": "\u52a0\u901f\u5ea6\u5408\u6210\u516c\u5f0f\u662f\u4ec0\u4e48\uff1f", "top_k": 2},
+    )
+    assert response.status_code == 200
+    assert response.json()[0]["page_number"] == 2

@@ -43,7 +43,11 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
         overlay.style.height = `${viewport.height}px`;
         if (highlight) {
           const text = await pdfPage.getTextContent();
-          const terms = highlight.toLowerCase().match(/[\p{L}\p{N}]{5,}/gu)?.slice(0, 12) ?? [];
+          const terms = (highlight.toLowerCase().match(/[a-z0-9]{5,}|[\p{Script=Han}]{2,}/gu) ?? [])
+            .flatMap((term) => /\p{Script=Han}/u.test(term)
+              ? Array.from({ length: term.length - 1 }, (_, index) => term.slice(index, index + 2))
+              : [term])
+            .slice(0, 24);
           text.items.forEach((raw) => {
             if (!("str" in raw) || !terms.some((term) => raw.str.toLowerCase().includes(term))) return;
             const tx = pdfjs.Util.transform(viewport.transform, raw.transform);

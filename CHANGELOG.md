@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.4 - 2026-08-13
+
+### Fixed
+
+- Added nearby-page context so a retrieved section heading can bring its adjacent explanation into the AI evidence set.
+- Prioritized equation-bearing Chinese pages for questions that name a specific formula.
+- Strengthened the evidence prompt against using contents pages as formula proof or double-counting compact and expanded expressions.
+- Highlighted short Chinese PDF text fragments with local two-character terms.
+
+### Validated
+
+- 23 focused backend checks and a production frontend build
+- Seven private tutorial PDFs, 222/222 pages with selectable text
+- Three study sessions with every displayed citation opened in the PDF viewer
+- Document-scoped revision session: 3/3 useful answers, 6/6 citations on direct evidence pages
+- Course-wide comparison session recorded as partial because broad questions still admitted weak outline citations and one incorrect synthesis
+
 ## 0.1.3 - 2026-08-13
 
 ### Fixed

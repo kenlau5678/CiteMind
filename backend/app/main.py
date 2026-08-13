@@ -26,7 +26,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="CiteMind API", version="0.1.3", lifespan=lifespan)
+app = FastAPI(title="CiteMind API", version="0.1.4", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -137,8 +137,20 @@ def _cjk_results(db, course_id: int, query: str, document_id: int | None, limit:
         overlap = len(query_terms & _cjk_bigrams(item["content"]))
         ratio = overlap / len(query_terms)
         if overlap >= minimum_overlap and ratio >= 0.15:
-            item["lexical_score"] = ratio
+            formula_match = False
+            if any(marker in item["content"] for marker in ("=", "＝", "\uf03d")):
+                for match in re.finditer("公式", query):
+                    prefix = re.search(r"[\u4e00-\u9fff]+$", query[:match.start()])
+                    if prefix and any(
+                        prefix.group()[-length:] + "公式" in item["content"]
+                        for length in range(min(5, len(prefix.group())), 1, -1)
+                    ):
+                        formula_match = True
+                        break
+            formula_bonus = 0.35 if formula_match else 0
+            item["lexical_score"] = ratio + formula_bonus
             item["lexical_overlap"] = overlap
+            item["formula_match"] = formula_match
             scored.append(item)
     scored.sort(key=lambda item: (item["lexical_score"], item["lexical_overlap"]), reverse=True)
     return scored[:limit]
@@ -176,7 +188,7 @@ def search_chunks(course_id: int, request: SearchRequest):
         merged[item["id"]] = {**item, "score": 1 / (60 + rank), "keyword_match": True}
     for rank, item in enumerate(cjk, 1):
         current = merged.setdefault(item["id"], {**item, "score": 0, "keyword_match": False})
-        current["score"] += 1 / (60 + rank)
+        current["score"] += (2 if item.get("formula_match") else 1) / (60 + rank)
         current["cjk_match"] = True
     for rank, item in enumerate(semantic, 1):
         score = ai.cosine(query_vector, json.loads(item["embedding"]))
@@ -193,7 +205,34 @@ def search_chunks(course_id: int, request: SearchRequest):
         item.pop("keyword_score", None)
         item.pop("lexical_score", None)
         item.pop("lexical_overlap", None)
+        item.pop("formula_match", None)
     return safe[: request.top_k]
+
+
+def add_neighbor_context(evidence: list[dict], max_extra: int = 6) -> list[dict]:
+    """Include nearby pages when a section heading ranks above its explanation."""
+    if not evidence or max_extra <= 0:
+        return evidence
+    result = list(evidence)
+    seen = {item["id"] for item in evidence}
+    with connect() as db:
+        for seed in evidence[:4]:
+            neighbors = rows(db.execute(
+                """SELECT c.*, d.title, d.filename FROM chunks c
+                   JOIN documents d ON d.id=c.document_id
+                   WHERE c.document_id=? AND c.page_number IN (?,?)
+                   ORDER BY c.page_number""",
+                (seed["document_id"], seed["page_number"] - 1, seed["page_number"] + 1),
+            ).fetchall())
+            for item in neighbors:
+                if item["id"] in seen:
+                    continue
+                item.pop("embedding", None)
+                result.append(item)
+                seen.add(item["id"])
+                if len(result) >= len(evidence) + max_extra:
+                    return result
+    return result
 
 
 @app.get("/api/health")
@@ -340,7 +379,7 @@ def clear_messages(course_id: int):
 
 @app.post("/api/courses/{course_id}/ask")
 def ask(course_id: int, body: AskRequest):
-    evidence = search_chunks(course_id, body)
+    evidence = add_neighbor_context(search_chunks(course_id, body))
     if not evidence:
         raise HTTPException(422, "No reliable evidence was found in this course")
     with connect() as db:
