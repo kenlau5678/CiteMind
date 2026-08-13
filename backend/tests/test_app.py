@@ -36,6 +36,17 @@ def test_private_formula_glyphs_are_decoded_only_for_known_fonts():
     assert normalize_private_glyphs("x \uf03d y", {"\uf03d": {"PrivateMathFont"}}) == "x \uf03d y"
 
 
+def test_legacy_symbol_operators_used_in_mechanics_are_decoded():
+    text = "F \uf0a3 μN, α \uf0b3 θ, \uf0e5M = 0, \uf0f2F\uf0d7dr, \uf0d0ABC = 90\uf0b0"
+    fonts = {glyph: {"Symbol"} for glyph in set(text) if "\ue000" <= glyph <= "\uf8ff"}
+    assert normalize_private_glyphs(text, fonts) == "F ≤ μN, α ≥ θ, ∑M = 0, ∫F⋅dr, ∠ABC = 90°"
+
+
+def test_legacy_symbol_operator_is_not_guessed_for_ambiguous_fonts():
+    glyph = "\uf0e5"
+    assert normalize_private_glyphs(glyph, {glyph: {"Symbol", "Wingdings"}}) == glyph
+
+
 def test_pdf_chunks_keep_real_page_numbers(client, sample_pdf):
     http, _, db_module = client
     course_id = create_course(http)

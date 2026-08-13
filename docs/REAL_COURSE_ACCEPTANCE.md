@@ -16,11 +16,11 @@ Complete the three sessions on different study tasks. For each one, ask at least
 | 2 | Compare related lecture chapters | 3 | 8 | 6 | Partial |
 | 3 | Resolve a question while revising (current-file scope) | 3 | 6 | 0 | Yes |
 
-Completed on 2026-08-13 with seven private tutorial PDFs (222 selectable-text pages). Every displayed citation was opened and its file and page were checked. A Chinese citation that initially opened with no highlights was fixed and rechecked with five highlights.
+Completed on 2026-08-13 and extended to fourteen private tutorial PDFs (373 selectable-text pages). Every displayed citation in the original sessions was opened and its file and page were checked. The extension added seven mechanics retrieval checks, three real cited answers, and a browser check of an original-page citation preview. A Chinese citation that initially opened with no highlights was fixed and rechecked with five highlights.
 
 This run does not close the v1 gate: the supplied set contained tutorials only, not the required lecture, personal note, and paper mix. The course-wide comparison session also exposed weak outline-page citations and one incorrect synthesis of equivalent formula forms. Exact private questions, filenames, expected pages, and returned pages remain in an ignored local acceptance record rather than this public document.
 
-The v0.1.7 retrieval follow-up reindexed all 222 pages with safe legacy-symbol decoding and rare Chinese concept weighting. A previously missed point-acceleration evidence page moved from rank 9 to rank 2, but this is retrieval evidence only; the clean AI comparison session is still required.
+The v0.1.7 retrieval follow-up reindexed all 373 pages with safe legacy-symbol decoding and rare Chinese concept weighting. A previously missed point-acceleration evidence page moved from rank 9 to rank 2. The seven added mechanics questions all retrieved the intended page in the top five, but this is still a tutorial-only set; the mixed-source acceptance course is still required.
 
 ## Release gate
 

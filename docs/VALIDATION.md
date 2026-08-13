@@ -4,7 +4,7 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 
 | Requirement | Evidence | Result |
 | --- | --- | --- |
-| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 25/25 passed |
+| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 27/27 passed |
 | Production frontend | `cd frontend; npm run build` | Passed |
 | Clean dependency install | Empty verification directories; fresh Python virtual environment and `npm ci` | 25/25 backend checks and production frontend build passed |
 | Page provenance | Generated two-page PDF test | Text stayed on PDF pages 1 and 2 |
@@ -26,7 +26,10 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 | Chat transport failure | Provider disconnected during real validation plus focused test | Controlled 502; no raw 500 |
 | 100-page indexing | Generated 100-page text PDF, warm local model cache | 3.47 seconds |
 | Citation navigation | Browser interaction against production build | Opened PDF page 8 and rendered six evidence highlights |
-| Private tutorial ingestion | Seven user-supplied PDFs | 222/222 pages had selectable text and indexed successfully |
+| Private tutorial ingestion | Fourteen user-supplied PDFs | 373/373 pages had selectable text and indexed successfully |
+| Added mechanics retrieval | Seven questions across equilibrium, friction, force analysis, constraints, and virtual displacement | 7/7 expected pages appeared in the top five; ranks were 1 or 2 |
+| Added mechanics AI answers | Three real cross-document questions with retry after two transient provider disconnects | 3/3 supported answers returned valid citations to the intended PDFs and pages |
+| Added mechanics citation navigation | Production browser opened the friction-angle citation | Original-page preview loaded and opened page 4/25 with no browser errors |
 | Private document-scoped revision | Three real questions; every citation clicked | 3/3 useful answers; 6/6 direct page citations |
 | Chinese short-fragment highlighting | Real private citation page | Improved from zero to five highlights |
 | AI formula rendering | Production browser with six formulas | Inline/display math, subscripts, superscripts, fraction, integral, root, and matrix rendered; no browser errors |
