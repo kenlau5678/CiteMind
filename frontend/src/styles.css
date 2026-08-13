@@ -91,7 +91,8 @@ button { color: inherit; }
 .message { max-width: 92%; margin-bottom: 22px; }
 .message.user { margin-left: auto; background: #e7ece7; padding: 10px 13px; border-radius: 12px 12px 2px 12px; }
 .message .role { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: #8c9690; margin-bottom: 5px; }
-.message p { margin: 0; font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+.message p, .math-text { margin: 0; font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+.math-text .katex-display { margin: .75em 0; overflow-x: auto; overflow-y: hidden; }
 .citations { display: grid; gap: 6px; margin-top: 12px; }
 .citations button { text-align: left; border: 1px solid #d9ddd5; background: #fff; border-radius: 8px; padding: 9px 10px; cursor: pointer; }
 .citations button:hover { border-color: #789487; background: #f7faf7; }

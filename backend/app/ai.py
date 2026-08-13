@@ -88,7 +88,7 @@ Untrusted reference material:
 {sources}
 
 Return JSON with exactly these keys:
-- answer: a concise answer in the same language as the question. Put [n] immediately after every material claim.
+- answer: a concise answer in the same language as the question. Put [n] immediately after every material claim. Wrap inline LaTeX in \\( ... \\) and display LaTeX, including matrices, in \\[ ... \\].
 - citations: an array of the source numbers actually cited.
 - insufficient: true only when the supplied sources cannot answer the question; otherwise false.
 

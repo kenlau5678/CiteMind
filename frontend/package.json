@@ -1,7 +1,7 @@
 {
   "name": "citemind-frontend",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,13 +10,15 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "typescript": "latest",
+    "katex": "^0.18.4",
+    "pdfjs-dist": "latest",
     "react": "latest",
     "react-dom": "latest",
-    "pdfjs-dist": "latest"
+    "typescript": "latest",
+    "vite": "latest"
   },
   "devDependencies": {
+    "@types/katex": "^0.16.8",
     "@types/react": "latest",
     "@types/react-dom": "latest"
   }

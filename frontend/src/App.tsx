@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
+import { MathText } from "./components/MathText";
 import { PdfViewer } from "./components/PdfViewer";
 import type { Citation, Course, Document, Message } from "./types";
 
@@ -176,7 +177,7 @@ export default function App() {
                 {messages.map((message, index) => (
                   <article key={message.id ?? index} className={`message ${message.role}`}>
                     <span className="role">{message.role === "user" ? "You" : "CiteMind"}</span>
-                    <p>{message.content}</p>
+                    {message.role === "assistant" ? <MathText>{message.content}</MathText> : <p>{message.content}</p>}
                     {!!message.citations?.length && <div className="citations">
                       {message.citations.map((citation) => (
                         <button key={citation.number} onClick={() => openCitation(citation)}>

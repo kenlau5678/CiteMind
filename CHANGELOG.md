@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.5 - 2026-08-13
+
+### Added
+
+- Rendered inline and display LaTeX in AI answers with KaTeX.
+- Supported subscripts, superscripts, fractions, roots, integrals, and matrix environments.
+- Accepted `\\( ... \\)`, `\\[ ... \\]`, `$ ... $`, and `$$ ... $$` delimiters.
+
+### Validated
+
+- Six formulas and three display blocks rendered in the production UI with no browser errors.
+- 23 focused backend checks and a production frontend build.
+
 ## 0.1.4 - 2026-08-13
 
 ### Fixed

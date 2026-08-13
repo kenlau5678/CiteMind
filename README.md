@@ -22,6 +22,7 @@ Most document chat demos optimize for a fluent answer. CiteMind optimizes for a 
 - citations are server-validated and cannot name a source the retriever did not supply;
 - every citation contains the file, PDF page, and original excerpt;
 - clicking evidence opens and highlights the matching PDF page;
+- AI answers typeset inline and display LaTeX, including fractions and matrices;
 - weak retrieval produces “no reliable evidence” instead of a confident guess.
 
 ## Quick start
@@ -122,7 +123,7 @@ See the dated [validation report](docs/VALIDATION.md) for the complete test matr
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
-The current engineering candidate is documented in the [v0.1.4 release notes](docs/RELEASE_NOTES_v0.1.4.md). It has completed three private tutorial sessions and exposed a course-wide comparison weakness; it is not represented as v1.0 until that path and the required lecture/notes/paper source mix pass.
+The current engineering candidate is documented in the [v0.1.5 release notes](docs/RELEASE_NOTES_v0.1.5.md). It has completed three private tutorial sessions and exposed a course-wide comparison weakness; it is not represented as v1.0 until that path and the required lecture/notes/paper source mix pass.
 
 ## Repository map
 
