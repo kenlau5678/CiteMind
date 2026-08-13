@@ -29,6 +29,7 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 | Private document-scoped revision | Three real questions; every citation clicked | 3/3 useful answers; 6/6 direct page citations |
 | Chinese short-fragment highlighting | Real private citation page | Improved from zero to five highlights |
 | AI formula rendering | Production browser with six formulas | Inline/display math, subscripts, superscripts, fraction, integral, root, and matrix rendered; no browser errors |
+| PDF fit-to-width | Production browser at 1280×720 | 479 px canvas inside 535 px reading pane; full page visible; no horizontal overflow |
 | Course-wide private comparison | Three broad cross-chapter questions | Partial: weak outline citations and one incorrect formula synthesis recorded locally |
 | Scope isolation | Browser switched course-wide chat to one document | Old messages cleared, new scope selected, no dialog or console error |
 | Browser runtime errors | Browser console after citation navigation | None |

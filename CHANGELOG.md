@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.6 - 2026-08-13
+
+### Fixed
+
+- Fit PDF pages to the reading pane instead of rendering at a fixed scale.
+- Recalculate the PDF scale when the split view or window width changes.
+- Keep citation highlights aligned with the resized PDF page.
+
+### Validated
+
+- At 1280×720, the 479 px PDF canvas fits inside the 535 px reading pane with no horizontal overflow.
+- 23 focused backend checks and a production frontend build.
+
 ## 0.1.5 - 2026-08-13
 
 ### Added

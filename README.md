@@ -125,7 +125,7 @@ See the dated [validation report](docs/VALIDATION.md) for the complete test matr
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
-The current engineering candidate is documented in the [v0.1.5 release notes](docs/RELEASE_NOTES_v0.1.5.md). It has completed three private tutorial sessions and exposed a course-wide comparison weakness; it is not represented as v1.0 until that path and the required lecture/notes/paper source mix pass.
+The current engineering candidate is documented in the [v0.1.6 release notes](docs/RELEASE_NOTES_v0.1.6.md). It has completed three private tutorial sessions and exposed a course-wide comparison weakness; it is not represented as v1.0 until that path and the required lecture/notes/paper source mix pass.
 
 ## Repository map
 

@@ -14,10 +14,23 @@ type Props = {
 export function PdfViewer({ documentId, title, page, highlight, pageCount, onPageChange }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [availableWidth, setAvailableWidth] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const measure = () => setAvailableWidth(Math.max(container.clientWidth - 56, 1));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!availableWidth) return;
     let cancelled = false;
     setLoading(true);
     setError("");
@@ -25,7 +38,8 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
     const task = pdfjs.getDocument({ url: `/api/documents/${documentId}/file`, worker });
     task.promise.then(async (pdf) => {
       const pdfPage = await pdf.getPage(page);
-      const viewport = pdfPage.getViewport({ scale: 1.35 });
+      const natural = pdfPage.getViewport({ scale: 1 });
+      const viewport = pdfPage.getViewport({ scale: Math.min(1.35, availableWidth / natural.width) });
       const canvas = canvasRef.current;
       if (!canvas || cancelled) return;
       const context = canvas.getContext("2d");
@@ -69,7 +83,7 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
       cancelled = true;
       void task.destroy().finally(() => worker.destroy());
     };
-  }, [documentId, page, highlight]);
+  }, [documentId, page, highlight, availableWidth]);
 
   return (
     <section className="viewer-panel">
@@ -84,7 +98,7 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
           <button aria-label="Next page" disabled={page >= pageCount} onClick={() => onPageChange(page + 1)}>→</button>
         </nav>
       </header>
-      <div className="pdf-scroll">
+      <div className="pdf-scroll" ref={scrollRef}>
         {loading && <div className="viewer-status">Rendering page…</div>}
         {error && <div className="error-card">{error}</div>}
         <div className="pdf-page" hidden={!!error}>
