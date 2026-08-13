@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.3 - 2026-08-13
+
+### Fixed
+
+- Added local Chinese bigram retrieval so natural rephrasings do not depend on SQLite's whole-string CJK tokenization.
+- Preserved strict semantic thresholds while admitting sufficiently overlapping Chinese evidence.
+- Converted chat transport disconnects into controlled 502 responses instead of raw 500 errors.
+- Repaired a missing inline marker when the model returns a valid citation array but omits `[n]` in the answer text.
+- Switched the Chinese demo PDF to a font with standard Unicode extraction instead of compatibility ideographs.
+
+### Validated
+
+- 21 focused backend checks
+- Real English answer: 14.02 seconds, one verified citation to PDF page 8
+- Real insufficient-evidence answer: zero citations and `insufficient=true`
+- Real Chinese rephrased answer: Chinese response with one verified citation to PDF page 5
+
 ## 0.1.2 - 2026-08-13
 
 ### Fixed

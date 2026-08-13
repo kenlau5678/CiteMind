@@ -14,9 +14,10 @@ PAGES = [
 
 def find_font() -> Path:
     candidates = [
-        Path(r"C:\Windows\Fonts\NotoSansSC-VF.ttf"),
+        Path(r"C:\Windows\Fonts\Deng.ttf"),
         Path(r"C:\Windows\Fonts\msyh.ttc"),
         Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"),
+        Path(r"C:\Windows\Fonts\NotoSansSC-VF.ttf"),
     ]
     for candidate in candidates:
         if candidate.exists():

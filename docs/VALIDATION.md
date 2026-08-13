@@ -4,7 +4,7 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 
 | Requirement | Evidence | Result |
 | --- | --- | --- |
-| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 19/19 passed |
+| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 21/21 passed |
 | Production frontend | `cd frontend; npm run build` | Passed |
 | Page provenance | Generated two-page PDF test | Text stayed on PDF pages 1 and 2 |
 | Citation integrity | Invalid, fabricated, and mismatched citation tests | All rejected |
@@ -15,8 +15,14 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 | Failed-upload cleanup | Corrupt, 201-page, and embedding-failure integration tests | No original file remained |
 | Course isolation | Document from course A used as scope in course B | Rejected before retrieval |
 | Chinese chunking | Adjacent Chinese sentences without spaces | Split at Chinese punctuation |
+| Chinese rephrasing | “为什么混合检索更适合课程资料？” | Local bigram retrieval ranked PDF page 5 first |
 | Retrieval quality | 30 manually annotated English and Chinese questions in one course | 30/30 top-five page recall (100%) |
-| Chinese PDF rendering | Poppler rendered all five A4 pages at 120 DPI; every page inspected | No missing glyphs, clipping, overlap, or footer errors |
+| Chinese PDF text layer | Extracted all five pages after font subsetting | Standard Unicode; zero CJK compatibility characters |
+| Chinese PDF rendering | Poppler rendered the final five A4 pages at 120 DPI; every page inspected | No missing glyphs, clipping, overlap, or footer errors |
+| Real English AI answer | `gpt-4.1-mini` against public demo material | 14.02 s; valid citation to page 8 |
+| Real evidence refusal | Asked for tuition fee absent from public demo | `insufficient=true`; zero citations; 17.74 s |
+| Real Chinese AI answer | Rephrased Chinese question scoped to Chinese demo | Chinese answer; valid citation to page 5; 19.60 s |
+| Chat transport failure | Provider disconnected during real validation plus focused test | Controlled 502; no raw 500 |
 | 100-page indexing | Generated 100-page text PDF, warm local model cache | 3.47 seconds |
 | Citation navigation | Browser interaction against production build | Opened PDF page 8 and rendered six evidence highlights |
 | Scope isolation | Browser switched course-wide chat to one document | Old messages cleared, new scope selected, no dialog or console error |
@@ -27,7 +33,6 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 ## Still requiring human acceptance
 
 - Three genuine learning sessions with private course material
-- A real answer request against the user's chosen AI account and model
 - Public GitHub repository and `v1.0.0` release
 
 These items are not represented as complete by demo data or mocked model responses.

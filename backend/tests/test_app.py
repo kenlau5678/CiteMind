@@ -134,6 +134,31 @@ def test_document_scope_cannot_cross_courses(client, sample_pdf):
     assert response.json()["detail"] == "Document not found in this course"
 
 
+def test_rephrased_chinese_query_uses_local_bigram_retrieval(client):
+    http, _, db_module = client
+    course_id = create_course(http)
+    with db_module.connect() as db:
+        cursor = db.execute(
+            """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,status)
+               VALUES (?,?,?,?,?,?,?,'ready')""",
+            (course_id, "中文课程", "lecture", "zh.pdf", "zh-test.pdf", 100, 2),
+        )
+        document_id = cursor.lastrowid
+        db.executemany(
+            "INSERT INTO chunks(document_id,course_id,page_number,content) VALUES (?,?,?,?)",
+            [
+                (document_id, course_id, 1, "神经网络使用反向传播计算梯度，学习率控制参数更新步长。"),
+                (document_id, course_id, 2, "混合检索融合关键词和语义信号，对包含专业术语的课程资料更加可靠。"),
+            ],
+        )
+    response = http.post(
+        f"/api/courses/{course_id}/search",
+        json={"query": "为什么混合检索更适合课程资料？", "document_id": document_id},
+    )
+    assert response.status_code == 200
+    assert response.json()[0]["page_number"] == 2
+
+
 def test_corrupt_pdf_leaves_no_file(client):
     http, _, db_module = client
     course_id = create_course(http)

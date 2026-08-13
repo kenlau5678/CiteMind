@@ -26,7 +26,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="CiteMind API", version="0.1.2", lifespan=lifespan)
+app = FastAPI(title="CiteMind API", version="0.1.3", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -113,6 +113,37 @@ def _keyword_results(db, course_id: int, query: str, document_id: int | None, li
     ).fetchall())
 
 
+def _cjk_bigrams(text: str) -> set[str]:
+    return {
+        sequence[index:index + 2]
+        for sequence in re.findall(r"[\u4e00-\u9fff]+", text)
+        for index in range(len(sequence) - 1)
+    }
+
+
+def _cjk_results(db, course_id: int, query: str, document_id: int | None, limit: int):
+    query_terms = _cjk_bigrams(query)
+    if not query_terms:
+        return []
+    sql = """SELECT c.*, d.title, d.filename FROM chunks c
+             JOIN documents d ON d.id=c.document_id WHERE c.course_id=?"""
+    params = [course_id]
+    if document_id is not None:
+        sql += " AND c.document_id=?"
+        params.append(document_id)
+    scored = []
+    minimum_overlap = 1 if len(query_terms) <= 2 else 2
+    for item in rows(db.execute(sql, params).fetchall()):
+        overlap = len(query_terms & _cjk_bigrams(item["content"]))
+        ratio = overlap / len(query_terms)
+        if overlap >= minimum_overlap and ratio >= 0.15:
+            item["lexical_score"] = ratio
+            item["lexical_overlap"] = overlap
+            scored.append(item)
+    scored.sort(key=lambda item: (item["lexical_score"], item["lexical_overlap"]), reverse=True)
+    return scored[:limit]
+
+
 def search_chunks(course_id: int, request: SearchRequest):
     require_course(course_id)
     if request.document_id is not None:
@@ -129,6 +160,7 @@ def search_chunks(course_id: int, request: SearchRequest):
         raise HTTPException(503, str(exc)) from exc
     with connect() as db:
         keyword = _keyword_results(db, course_id, request.query, request.document_id, 30)
+        cjk = _cjk_results(db, course_id, request.query, request.document_id, 30)
         sql = """SELECT c.*, d.title, d.filename FROM chunks c
                  JOIN documents d ON d.id=c.document_id
                  WHERE c.course_id=? AND c.embedding IS NOT NULL"""
@@ -142,16 +174,25 @@ def search_chunks(course_id: int, request: SearchRequest):
     merged: dict[int, dict] = {}
     for rank, item in enumerate(keyword, 1):
         merged[item["id"]] = {**item, "score": 1 / (60 + rank), "keyword_match": True}
+    for rank, item in enumerate(cjk, 1):
+        current = merged.setdefault(item["id"], {**item, "score": 0, "keyword_match": False})
+        current["score"] += 1 / (60 + rank)
+        current["cjk_match"] = True
     for rank, item in enumerate(semantic, 1):
         score = ai.cosine(query_vector, json.loads(item["embedding"]))
         current = merged.setdefault(item["id"], {**item, "score": 0, "keyword_match": False})
         current["score"] += 1 / (60 + rank)
         current["semantic_score"] = score
     ranked = sorted(merged.values(), key=lambda item: item["score"], reverse=True)
-    safe = [item for item in ranked if item.get("keyword_match") or item.get("semantic_score", 0) >= 0.25]
+    safe = [
+        item for item in ranked
+        if item.get("keyword_match") or item.get("cjk_match") or item.get("semantic_score", 0) >= 0.25
+    ]
     for item in safe:
         item.pop("embedding", None)
         item.pop("keyword_score", None)
+        item.pop("lexical_score", None)
+        item.pop("lexical_overlap", None)
     return safe[: request.top_k]
 
 
