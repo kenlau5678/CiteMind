@@ -153,7 +153,7 @@ export default function App() {
                 <button className="quiet-delete" aria-label={`Delete ${document.title}`} onClick={(event) => { event.stopPropagation(); removeDocument(document); }}>×</button>
               </article>
             ))}
-            {!documents.length && <button className="empty-source" onClick={() => setShowUpload(true)}>Drop in a text-based PDF to start your library →</button>}
+            {!documents.length && <button className="empty-source" onClick={() => setShowUpload(true)}>Drop in a PDF to start your library →</button>}
           </div>
 
           {!aiConfigured && <div className="config-notice">AI question answering is not configured. Copy <code>.env.example</code> to <code>.env</code> and add your API key.</div>}
@@ -225,12 +225,12 @@ function UploadDialog({ courseId, onClose, onUploaded, onError }: { courseId: nu
     <section className="modal" role="dialog" aria-modal="true" aria-label="Add a PDF">
       <button className="modal-close" onClick={onClose} disabled={uploading}>×</button>
       <span className="eyebrow">Add source</span><h2>Bring a PDF into this course</h2>
-      <p>Text-based PDFs only · up to 25 MB and 200 pages. Relevant excerpts are sent to your configured AI service.</p>
+      <p>Text or scanned PDF · up to 25 MB and 200 pages. Scanned pages are sent to your configured AI for visual OCR and keep their original page numbers.</p>
       <div className="kind-picker">{Object.entries(kindNames).map(([value, label]) => <button key={value} className={kind === value ? "active" : ""} onClick={() => setKind(value as Document["kind"])}>{label}</button>)}</div>
       <label className={uploading ? "file-drop uploading" : "file-drop"}>
         <input type="file" accept="application/pdf,.pdf" disabled={uploading} onChange={(event) => choose(event.target.files?.[0])} />
-        <span>{uploading ? "Extracting text and building the index…" : "Choose a PDF"}</span>
-        <small>{uploading ? "Keep this window open" : "Your original file stays on this computer"}</small>
+        <span>{uploading ? "Reading pages and building the index…" : "Choose a PDF"}</span>
+        <small>{uploading ? "Scanned pages may take a little longer · keep this window open" : "Your original file stays on this computer"}</small>
       </label>
     </section>
   </div>;

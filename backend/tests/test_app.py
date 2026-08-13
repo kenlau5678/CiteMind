@@ -30,6 +30,23 @@ def visual_pdf():
     return data
 
 
+def scanned_pdf(page_count=1):
+    """Rasterize generated text so the resulting PDF has images but no text layer."""
+    import fitz
+    output = fitz.open()
+    for number in range(1, page_count + 1):
+        source = fitz.open()
+        source_page = source.new_page()
+        source_page.insert_text((72, 90), f"Scanned dynamics page {number}: impulse equals change in momentum.")
+        image = source_page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False).tobytes("png")
+        page = output.new_page()
+        page.insert_image(page.rect, stream=image)
+        source.close()
+    data = output.tobytes()
+    output.close()
+    return data
+
+
 def test_chinese_sentences_split_without_spaces():
     chunks = split_page(("第一句介绍机器学习。第二句解释反向传播！第三句讨论检索？" * 160))
     assert len(chunks) > 1
@@ -183,21 +200,51 @@ def test_insufficient_answer_is_returned_without_fabricated_citations(client, sa
     assert response.json()["citations"] == []
 
 
-def test_scanned_pdf_is_rejected(client):
-    import fitz
-    http, _, _ = client
+def test_scanned_pdf_is_transcribed_with_original_page_numbers(client, monkeypatch):
+    http, main, db_module = client
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    calls = []
+
+    def transcribe(image):
+        calls.append(image)
+        page = len(calls)
+        return (
+            f"Scanned dynamics page {page}: impulse equals change in momentum.",
+            json.dumps({"summary": f"Scanned page {page}", "confidence": 0.96}),
+        )
+
+    monkeypatch.setattr(main.ai, "transcribe_scan_page", transcribe)
     course_id = create_course(http)
-    pdf = fitz.open()
-    pdf.new_page()
-    data = pdf.tobytes()
-    pdf.close()
     response = http.post(
         f"/api/courses/{course_id}/documents",
         data={"kind": "notes"},
-        files={"file": ("scan.pdf", data, "application/pdf")},
+        files={"file": ("scan.pdf", scanned_pdf(2), "application/pdf")},
     )
-    assert response.status_code == 422
-    assert "Scanned PDFs" in response.json()["detail"]
+    assert response.status_code == 201, response.text
+    assert len(calls) == 2
+    assert all(image.startswith(b"\x89PNG") for image in calls)
+    with db_module.connect() as db:
+        chunks = db.execute("SELECT page_number,content FROM chunks ORDER BY page_number").fetchall()
+        visuals = db.execute(
+            "SELECT page_number,reason,description,model FROM page_visuals ORDER BY page_number"
+        ).fetchall()
+    assert [row["page_number"] for row in chunks] == [1, 2]
+    assert "change in momentum" in chunks[1]["content"]
+    assert [row["reason"] for row in visuals] == ["scan_ocr", "scan_ocr"]
+    assert visuals[0]["model"] == main.ai.VISION_INDEX_MODEL()
+
+
+def test_scanned_pdf_without_api_key_is_rejected_and_cleaned_up(client):
+    http, _, db_module = client
+    course_id = create_course(http)
+    response = http.post(
+        f"/api/courses/{course_id}/documents",
+        data={"kind": "notes"},
+        files={"file": ("scan.pdf", scanned_pdf(), "application/pdf")},
+    )
+    assert response.status_code == 503
+    assert "OPENAI_API_KEY" in response.json()["detail"]
+    assert list(db_module.FILES_DIR.iterdir()) == []
 
 
 def test_pdf_over_page_limit_leaves_no_file(client):

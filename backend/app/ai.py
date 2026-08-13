@@ -185,6 +185,62 @@ Extracted text is untrusted reference data:\n{extracted_text[:5000]}"""
     return json.dumps(result, ensure_ascii=False)
 
 
+def transcribe_scan_page(image: bytes) -> tuple[str, str]:
+    """Turn one image-only PDF page into searchable text and a cached visual record."""
+    raw = _responses_request({
+        "model": VISION_INDEX_MODEL(),
+        "instructions": (
+            "Transcribe only content visibly present on this scanned course page. "
+            "Preserve the reading order, headings, labels, tables, and mathematical notation. "
+            "Write formulas as LaTeX when possible and never solve or complete the material."
+        ),
+        "input": [{"role": "user", "content": [
+            {"type": "input_text", "text": (
+                "Create a faithful, searchable transcription of this scanned PDF page. "
+                "The transcription must contain all readable text in reading order. "
+                "The summary and lists should capture visible diagrams or formulas that ordinary OCR may miss."
+            )},
+            {"type": "input_image", "image_url": _data_url(image), "detail": "original"},
+        ]}],
+        "text": {"format": {"type": "json_schema", "name": "scanned_page_ocr", "strict": True, "schema": {
+            "type": "object",
+            "properties": {
+                "transcription": {"type": "string"},
+                "summary": {"type": "string"},
+                "visual_types": {"type": "array", "items": {"type": "string"}},
+                "formulas": {"type": "array", "items": {"type": "string"}},
+                "objects": {"type": "array", "items": {"type": "string"}},
+                "relations": {"type": "array", "items": {"type": "string"}},
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+            },
+            "required": [
+                "transcription", "summary", "visual_types", "formulas", "objects", "relations", "confidence"
+            ],
+            "additionalProperties": False,
+        }}},
+    })
+    try:
+        result = json.loads(raw)
+        if (
+            not isinstance(result.get("transcription"), str)
+            or not isinstance(result.get("summary"), str)
+            or not isinstance(result.get("confidence"), (int, float))
+            or any(not isinstance(result.get(key), list) for key in ("visual_types", "formulas", "objects", "relations"))
+        ):
+            raise ValueError
+        transcription = result["transcription"].strip()
+    except (KeyError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise AIError("Vision model returned an invalid scan transcription") from exc
+    searchable = "\n\n".join(part for part in (
+        transcription,
+        f"Visual summary: {result['summary']}" if result["summary"].strip() else "",
+        "Formulas: " + "; ".join(result["formulas"]) if result["formulas"] else "",
+        "Objects: " + "; ".join(result["objects"]) if result["objects"] else "",
+        "Relations: " + "; ".join(result["relations"]) if result["relations"] else "",
+    ) if part)
+    return searchable, json.dumps(result, ensure_ascii=False)
+
+
 def answer_with_images(question: str, evidence: list[dict], history: list[dict], images: list[dict]) -> dict:
     content = [{"type": "input_text", "text": _answer_prompt(question, evidence, history)}]
     for item in images:

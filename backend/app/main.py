@@ -1,6 +1,7 @@
 import json
 import math
 import mimetypes
+import os
 import re
 import uuid
 from contextlib import asynccontextmanager
@@ -19,6 +20,7 @@ from .db import FILES_DIR, connect, decode_message, init_db, rows
 
 MAX_FILE_BYTES = 25 * 1024 * 1024
 MAX_PAGES = 200
+MAX_SCAN_PAGES = max(1, min(MAX_PAGES, int(os.getenv("CITEMIND_SCAN_MAX_PAGES", "50"))))
 
 SYMBOL_GLYPHS = {
     "\uf028": "(", "\uf029": ")", "\uf02b": "+", "\uf02d": "−", "\uf03d": "=",
@@ -77,6 +79,12 @@ def visual_page_reason(page: fitz.Page, text: str) -> str | None:
     if sum(text.count(marker) for marker in ("=", "∑", "∫", "√", "∂", "×")) >= 4:
         return "formula_dense"
     return None
+
+
+def scan_page_needs_ocr(page: fitz.Page, text: str) -> bool:
+    """Detect rasterized pages without enough native text to search reliably."""
+    visible_characters = len(re.sub(r"\s+", "", text))
+    return visible_characters < 32 and bool(page.get_images(full=True))
 
 
 def question_requests_vision(question: str) -> bool:
@@ -388,13 +396,39 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
             if pdf.page_count > MAX_PAGES:
                 raise HTTPException(413, "PDF exceeds the 200-page limit")
             pages = []
+            scans = []
             for index in range(pdf.page_count):
                 page = pdf.load_page(index)
                 text = extract_page_text(page)
-                pages.append((index + 1, text, visual_page_reason(page, text)))
-        pieces = [(page, chunk) for page, text, _ in pages for chunk in split_page(text)]
+                if scan_page_needs_ocr(page, text):
+                    scans.append(index)
+                pages.append({
+                    "number": index + 1,
+                    "text": text,
+                    "reason": visual_page_reason(page, text),
+                    "description": None,
+                    "model": None,
+                })
+            if len(scans) > MAX_SCAN_PAGES:
+                raise HTTPException(413, f"Scanned PDF exceeds the {MAX_SCAN_PAGES}-page OCR limit")
+            if scans and not ai.API_KEY():
+                raise HTTPException(503, "Scanned PDF pages require OPENAI_API_KEY for visual OCR")
+            for index in scans:
+                image = pdf.load_page(index).get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False).tobytes("png")
+                searchable, description = ai.transcribe_scan_page(image)
+                pages[index].update({
+                    "text": searchable,
+                    "reason": "scan_ocr",
+                    "description": description,
+                    "model": ai.VISION_INDEX_MODEL(),
+                })
+        pieces = [
+            (page["number"], chunk)
+            for page in pages
+            for chunk in split_page(page["text"])
+        ]
         if not pieces:
-            raise HTTPException(422, "No selectable text found. Scanned PDFs are not supported yet")
+            raise HTTPException(422, "No readable text was found in this PDF")
         vectors = []
         for start in range(0, len(pieces), 64):
             vectors.extend(ai.embed([content for _, content in pieces[start:start + 64]]))
@@ -410,8 +444,11 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
                 [(document_id, course_id, page, content, json.dumps(vector)) for (page, content), vector in zip(pieces, vectors)],
             )
             db.executemany(
-                "INSERT INTO page_visuals(document_id,page_number,reason) VALUES (?,?,?)",
-                [(document_id, page, reason) for page, _, reason in pages if reason],
+                "INSERT INTO page_visuals(document_id,page_number,reason,description,model) VALUES (?,?,?,?,?)",
+                [
+                    (document_id, page["number"], page["reason"], page["description"], page["model"])
+                    for page in pages if page["reason"]
+                ],
             )
             document = dict(db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone())
         keep_file = True
