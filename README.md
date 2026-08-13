@@ -12,6 +12,8 @@
 
 ![CiteMind AI formula rendering](docs/images/citemind-formulas.png)
 
+![CiteMind original-page formula evidence](docs/images/citemind-formula-preview.png)
+
 CiteMind is a local-first course knowledge base for lecture notes, student notes, and papers. It answers questions only from the uploaded material, attaches a page-level citation to every supported claim, and opens the exact PDF page behind each citation.
 
 > Status: working v0.1 MVP. Text-based PDFs, single user, Windows-first.
@@ -25,6 +27,7 @@ Most document chat demos optimize for a fluent answer. CiteMind optimizes for a 
 - every citation contains the file, PDF page, and original excerpt;
 - clicking evidence opens and highlights the matching PDF page;
 - AI answers typeset inline and display LaTeX, including fractions and matrices;
+- known legacy `Symbol` formula glyphs are decoded for retrieval, while every citation retains an exact original-page visual preview;
 - weak retrieval produces “no reliable evidence” instead of a confident guess.
 
 ## Quick start
@@ -38,6 +41,8 @@ Copy-Item .env.example .env
 ```
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000). The first document takes longer because CiteMind downloads a multilingual local embedding model (about 220 MB) once.
+
+Without an API key you can still create courses, upload and read PDFs, build the local index, and open original-page evidence. Add the key later to enable AI answers. If port 8000 is already in use, run `$env:CITEMIND_PORT=8002; .\start.ps1`.
 
 For development, run the backend and frontend separately:
 
@@ -65,7 +70,7 @@ npm run dev
 
 ```mermaid
 flowchart LR
-    PDF["Text PDF"] --> Parse["Page-preserving parser"]
+    PDF["Text PDF"] --> Parse["Page-preserving parser<br/>safe legacy-symbol decoding"]
     Parse --> Chunks["Paragraph chunks<br/>never cross a page"]
     Chunks --> FTS["SQLite FTS5"]
     Chunks --> Local["Local multilingual embeddings"]
@@ -125,7 +130,7 @@ See the dated [validation report](docs/VALIDATION.md) for the complete test matr
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
-The current engineering candidate is documented in the [v0.1.6 release notes](docs/RELEASE_NOTES_v0.1.6.md). It has completed three private tutorial sessions and exposed a course-wide comparison weakness; it is not represented as v1.0 until that path and the required lecture/notes/paper source mix pass.
+The current engineering candidate is documented in the [v0.1.7 release notes](docs/RELEASE_NOTES_v0.1.7.md). Seven private tutorials (222 pages) are indexed together and the formula-evidence path has been rechecked, but CiteMind is not represented as v1.0 until a clean AI comparison session and the required lecture/notes/paper source mix pass.
 
 ## Repository map
 

@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.1.7 - 2026-08-13
+
+### Added
+
+- Show a sharp original-PDF evidence strip inside every citation card.
+- Decode unambiguous legacy `SymbolMT` operators and Greek letters, plus `MT-Extra` dot accents, before indexing.
+- Weight rare Chinese concept bigrams above generic fragments during local retrieval.
+
+### Fixed
+
+- Keep both split-view panels within their grid row so headers and the complete PDF page are never vertically clipped.
+- Reset the PDF reading position when a citation opens another document or page.
+- Remove private-use glyphs from citation prose when the source font cannot be decoded safely.
+- Allow one-command startup on an alternate `CITEMIND_PORT` and clarify the useful no-key reading mode.
+- Finish in-flight PDF.js rendering before releasing a switched panel, preventing harmless `AbortError` console noise.
+
+### Validated
+
+- 25 focused backend checks and a production frontend build.
+- Seven private tutorial PDFs, 222/222 pages reindexed with sorted page text and local embeddings.
+- The real point-acceleration evidence page moved from rank 9 to rank 2 and entered the default evidence window.
+- The checked formula page dropped from 37 private-use glyphs to zero; its original rendering remains visible beside the normalized text.
+- Production browser check at 1280×720 showed the complete PDF page, synchronized page 27 navigation, rendered AI math, and the original-page formula preview.
+- The committed formula-evidence screenshot uses only the self-authored CC0 demo course; private tutorial pages remain untracked.
+
 ## 0.1.6 - 2026-08-13
 
 ### Fixed

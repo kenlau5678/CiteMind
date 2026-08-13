@@ -1,6 +1,6 @@
 import json
 
-from app.main import split_page
+from app.main import normalize_private_glyphs, split_page
 
 
 def create_course(client):
@@ -24,6 +24,16 @@ def test_chinese_sentences_split_without_spaces():
     assert len(chunks) > 1
     assert "。\n第二句" in chunks[0]
     assert chunks[0].endswith(("。", "！", "？"))
+
+
+def test_private_formula_glyphs_are_decoded_only_for_known_fonts():
+    text = "a(t) \uf03d \uf026\uf026s\uf074 \uf02b s\uf0262/\uf072"
+    fonts = {
+        "\uf03d": {"SymbolMT"}, "\uf074": {"SymbolMT"}, "\uf02b": {"SymbolMT"},
+        "\uf072": {"SymbolMT"}, "\uf026": {"MT-Extra"},
+    }
+    assert normalize_private_glyphs(text, fonts) == "a(t) = ¨sτ + s˙2/ρ"
+    assert normalize_private_glyphs("x \uf03d y", {"\uf03d": {"PrivateMathFont"}}) == "x \uf03d y"
 
 
 def test_pdf_chunks_keep_real_page_numbers(client, sample_pdf):
@@ -157,6 +167,30 @@ def test_rephrased_chinese_query_uses_local_bigram_retrieval(client):
     )
     assert response.status_code == 200
     assert response.json()[0]["page_number"] == 2
+
+
+def test_cjk_retrieval_prioritizes_rare_concept_terms(client):
+    http, main, db_module = client
+    course_id = create_course(http)
+    with db_module.connect() as db:
+        cursor = db.execute(
+            """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,status)
+               VALUES (?,?,?,?,?,?,?,'ready')""",
+            (course_id, "点的运动学", "lecture", "motion.pdf", "motion-rare.pdf", 100, 8),
+        )
+        document_id = cursor.lastrowid
+        pages = [
+            "点的加速度说明" if page != 2 else "加速度分解包含切向加速度与法向加速度"
+            for page in range(1, 9)
+        ]
+        db.executemany(
+            "INSERT INTO chunks(document_id,course_id,page_number,content) VALUES (?,?,?,?)",
+            [(document_id, course_id, page, text) for page, text in enumerate(pages, 1)],
+        )
+        ranked = main._cjk_results(
+            db, course_id, "点的加速度如何分解为切向和法向", None, 8
+        )
+    assert ranked[0]["page_number"] == 2
 
 
 def test_corrupt_pdf_leaves_no_file(client):

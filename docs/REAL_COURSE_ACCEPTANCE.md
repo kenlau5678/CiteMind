@@ -20,6 +20,8 @@ Completed on 2026-08-13 with seven private tutorial PDFs (222 selectable-text pa
 
 This run does not close the v1 gate: the supplied set contained tutorials only, not the required lecture, personal note, and paper mix. The course-wide comparison session also exposed weak outline-page citations and one incorrect synthesis of equivalent formula forms. Exact private questions, filenames, expected pages, and returned pages remain in an ignored local acceptance record rather than this public document.
 
+The v0.1.7 retrieval follow-up reindexed all 222 pages with safe legacy-symbol decoding and rare Chinese concept weighting. A previously missed point-acceleration evidence page moved from rank 9 to rank 2, but this is retrieval evidence only; the clean AI comparison session is still required.
+
 ## Release gate
 
 Release v1.0 only if all of these are true:

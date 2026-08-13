@@ -1,4 +1,5 @@
 import json
+import math
 import mimetypes
 import re
 import uuid
@@ -19,6 +20,39 @@ from .db import FILES_DIR, connect, decode_message, init_db, rows
 MAX_FILE_BYTES = 25 * 1024 * 1024
 MAX_PAGES = 200
 
+SYMBOL_GLYPHS = {
+    "\uf028": "(", "\uf029": ")", "\uf02b": "+", "\uf02d": "−", "\uf03d": "=",
+    "\uf061": "α", "\uf062": "β", "\uf063": "χ", "\uf064": "δ", "\uf065": "ε",
+    "\uf066": "φ", "\uf067": "γ", "\uf068": "η", "\uf069": "ι", "\uf06a": "φ",
+    "\uf06b": "κ", "\uf06c": "λ", "\uf06d": "μ", "\uf06e": "ν", "\uf06f": "ο",
+    "\uf070": "π", "\uf071": "θ", "\uf072": "ρ", "\uf073": "σ", "\uf074": "τ",
+    "\uf075": "υ", "\uf077": "ω", "\uf078": "ξ", "\uf079": "ψ", "\uf07a": "ζ",
+}
+
+
+def normalize_private_glyphs(text: str, glyph_fonts: dict[str, set[str]]) -> str:
+    """Decode only private glyphs whose source font makes their meaning unambiguous."""
+    for glyph, replacement in SYMBOL_GLYPHS.items():
+        fonts = glyph_fonts.get(glyph, set())
+        if fonts and all("Symbol" in font for font in fonts):
+            text = text.replace(glyph, replacement)
+    dot = "\uf026"
+    fonts = glyph_fonts.get(dot, set())
+    if fonts and all("MT-Extra" in font for font in fonts):
+        text = text.replace(dot * 2, "¨").replace(dot, "˙")
+    return text
+
+
+def extract_page_text(page: fitz.Page) -> str:
+    glyph_fonts: dict[str, set[str]] = {}
+    for block in page.get_text("dict")["blocks"]:
+        for line in block.get("lines", []):
+            for span in line["spans"]:
+                for glyph in span["text"]:
+                    if "\ue000" <= glyph <= "\uf8ff":
+                        glyph_fonts.setdefault(glyph, set()).add(span["font"])
+    return normalize_private_glyphs(page.get_text("text", sort=True), glyph_fonts)
+
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -26,7 +60,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="CiteMind API", version="0.1.6", lifespan=lifespan)
+app = FastAPI(title="CiteMind API", version="0.1.7", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -131,11 +165,23 @@ def _cjk_results(db, course_id: int, query: str, document_id: int | None, limit:
     if document_id is not None:
         sql += " AND c.document_id=?"
         params.append(document_id)
+    candidates = rows(db.execute(sql, params).fetchall())
+    candidate_terms = [_cjk_bigrams(item["content"]) for item in candidates]
+    document_frequency = {
+        term: sum(term in terms for terms in candidate_terms)
+        for term in query_terms
+    }
+    weights = {
+        term: math.log((len(candidates) + 1) / (frequency + 1)) + 1
+        for term, frequency in document_frequency.items()
+    }
+    query_weight = sum(weights.values()) or 1
     scored = []
     minimum_overlap = 1 if len(query_terms) <= 2 else 2
-    for item in rows(db.execute(sql, params).fetchall()):
-        overlap = len(query_terms & _cjk_bigrams(item["content"]))
-        ratio = overlap / len(query_terms)
+    for item, terms in zip(candidates, candidate_terms):
+        matched = query_terms & terms
+        overlap = len(matched)
+        ratio = sum(weights[term] for term in matched) / query_weight
         if overlap >= minimum_overlap and ratio >= 0.15:
             formula_match = False
             if any(marker in item["content"] for marker in ("=", "＝", "\uf03d")):
@@ -306,7 +352,7 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
         with fitz.open(target) as pdf:
             if pdf.page_count > MAX_PAGES:
                 raise HTTPException(413, "PDF exceeds the 200-page limit")
-            pages = [(index + 1, pdf.load_page(index).get_text("text")) for index in range(pdf.page_count)]
+            pages = [(index + 1, extract_page_text(pdf.load_page(index))) for index in range(pdf.page_count)]
         pieces = [(page, chunk) for page, text in pages for chunk in split_page(text)]
         if not pieces:
             raise HTTPException(422, "No selectable text found. Scanned PDFs are not supported yet")

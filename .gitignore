@@ -9,3 +9,4 @@ frontend/dist/
 frontend/*.tsbuildinfo
 work/
 release/
+tmp/

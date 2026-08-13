@@ -65,7 +65,7 @@ button { color: inherit; }
 .config-notice code { background: #f5e8c3; padding: 1px 3px; border-radius: 3px; }
 
 .split-view { display: grid; flex: 1; grid-template-columns: minmax(460px, 1.08fr) minmax(400px, .92fr); min-height: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 13px; overflow: hidden; box-shadow: 0 8px 28px #3a483f0b; }
-.viewer-panel, .chat-panel { min-width: 0; display: flex; flex-direction: column; }
+.viewer-panel, .chat-panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .viewer-panel { border-right: 1px solid var(--line); background: #e7e8e2; }
 .panel-header { height: 59px; flex: 0 0 59px; display: flex; justify-content: space-between; align-items: center; padding: 0 17px; background: #fbfaf6; border-bottom: 1px solid var(--line); }
 .panel-header strong { display: block; font-family: "Newsreader", serif; margin-top: 2px; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -98,6 +98,11 @@ button { color: inherit; }
 .citations button:hover { border-color: #789487; background: #f7faf7; }
 .citations span { color: var(--sage); display: block; font-size: 10px; font-weight: 700; }
 .citations q { display: block; color: #6f7773; font-size: 10px; line-height: 1.45; margin-top: 3px; }
+.citation-formula-note { display: block; margin-top: 6px; color: #9a6b1e; font-size: 9px; }
+.citation-preview { position: relative; display: none; overflow: hidden; margin-top: 8px; min-height: 82px; border: 1px solid #e1e3dc; border-radius: 6px; background: #f3f3ef; }
+.citation-preview.ready { display: block; }
+.citation-preview canvas { display: block; width: 100%; height: auto; background: white; }
+.citation-preview-label { position: absolute; z-index: 1; top: 6px; right: 6px; padding: 3px 6px; border-radius: 4px; background: #26352fdb; color: white !important; font-size: 8px !important; letter-spacing: .04em; }
 .thinking { display: flex; align-items: center; gap: 4px; color: #7d8882; font-size: 10px; }
 .thinking i { width: 5px; height: 5px; border-radius: 50%; background: #7d998b; animation: bounce .8s infinite alternate; }
 .thinking i:nth-child(2) { animation-delay: .2s; }.thinking i:nth-child(3) { animation-delay: .4s; margin-right: 5px; }

@@ -4,8 +4,9 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 
 | Requirement | Evidence | Result |
 | --- | --- | --- |
-| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 23/23 passed |
+| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 25/25 passed |
 | Production frontend | `cd frontend; npm run build` | Passed |
+| Clean dependency install | Empty verification directories; fresh Python virtual environment and `npm ci` | 25/25 backend checks and production frontend build passed |
 | Page provenance | Generated two-page PDF test | Text stayed on PDF pages 1 and 2 |
 | Citation integrity | Invalid, fabricated, and mismatched citation tests | All rejected |
 | Unsupported answer integrity | Supported answer without a citation | Rejected |
@@ -29,11 +30,15 @@ Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 | Private document-scoped revision | Three real questions; every citation clicked | 3/3 useful answers; 6/6 direct page citations |
 | Chinese short-fragment highlighting | Real private citation page | Improved from zero to five highlights |
 | AI formula rendering | Production browser with six formulas | Inline/display math, subscripts, superscripts, fraction, integral, root, and matrix rendered; no browser errors |
-| PDF fit-to-width | Production browser at 1280×720 | 479 px canvas inside 535 px reading pane; full page visible; no horizontal overflow |
+| Legacy formula text | Seven private tutorials reindexed from geometrically sorted text | 3,787 private glyphs reduced to 1,661 using font-gated mappings only; checked page 27 reduced from 37 to zero |
+| Original formula evidence | Production citation card against private page 27 | Sharp original-page crop displayed the fraction, Greek letters, accents, and surrounding prose |
+| Public formula evidence | Self-authored CC0 demo PDF page 4 | Citation preview centered the source equation; public screenshot contains no private tutorial page |
+| PDF fit-to-width | Production browser at 1280×720 | Reading and chat headers stayed visible; complete 479 px page fit inside the pane with zero retained scroll offset |
+| Rare Chinese concept retrieval | “点的加速度如何分解为切向和法向” across all seven tutorials | Direct page 27 improved from rank 9 to rank 2 and entered the default eight-item evidence window |
 | Course-wide private comparison | Three broad cross-chapter questions | Partial: weak outline citations and one incorrect formula synthesis recorded locally |
 | Scope isolation | Browser switched course-wide chat to one document | Old messages cleared, new scope selected, no dialog or console error |
-| Browser runtime errors | Browser console after citation navigation | None |
-| One-command startup | `.\start.ps1`, then `/api/health` | `{"status":"ok"}` |
+| Browser runtime errors | Rapid course switching, citation navigation, and original-page preview | None |
+| One-command startup | `$env:CITEMIND_PORT=8002; .\start.ps1`, then `/api/health` | `{"status":"ok"}` on the configured alternate port |
 | Demo video | `ffprobe` | H.264, 1280×720, 30 fps, 18 seconds |
 
 ## Still requiring acceptance

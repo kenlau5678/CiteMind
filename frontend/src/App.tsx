@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { MathText } from "./components/MathText";
 import { PdfViewer } from "./components/PdfViewer";
+import { CitationPreview, citationExcerpt, hasUnmappedFormulaGlyphs } from "./components/CitationPreview";
 import type { Citation, Course, Document, Message } from "./types";
 
 const kindNames = { lecture: "Lecture", notes: "Notes", paper: "Paper" };
@@ -182,7 +183,9 @@ export default function App() {
                       {message.citations.map((citation) => (
                         <button key={citation.number} onClick={() => openCitation(citation)}>
                           <span>[{citation.number}] {citation.title} · p.{citation.page_number}</span>
-                          <q>{citation.content.slice(0, 180)}{citation.content.length > 180 ? "…" : ""}</q>
+                          <q>{citationExcerpt(citation.content).slice(0, 180)}{citationExcerpt(citation.content).length > 180 ? "…" : ""}</q>
+                          {hasUnmappedFormulaGlyphs(citation.content) && <small className="citation-formula-note">检测到特殊公式字体，以原页预览为准</small>}
+                          <CitationPreview documentId={citation.document_id} page={citation.page_number} content={citation.content} />
                         </button>
                       ))}
                     </div>}

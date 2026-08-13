@@ -30,13 +30,20 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
   }, []);
 
   useEffect(() => {
+    const container = scrollRef.current;
+    if (!container) return;
+    container.scrollTop = 0;
+    container.scrollLeft = 0;
+  }, [documentId, page]);
+
+  useEffect(() => {
     if (!availableWidth) return;
     let cancelled = false;
     setLoading(true);
     setError("");
     const worker = new pdfjs.PDFWorker({ port: new PdfWorker({ type: "module" }) } as never);
     const task = pdfjs.getDocument({ url: `/api/documents/${documentId}/file`, worker });
-    task.promise.then(async (pdf) => {
+    const work = task.promise.then(async (pdf) => {
       const pdfPage = await pdf.getPage(page);
       const natural = pdfPage.getViewport({ scale: 1 });
       const viewport = pdfPage.getViewport({ scale: Math.min(1.35, availableWidth / natural.width) });
@@ -81,7 +88,7 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
     });
     return () => {
       cancelled = true;
-      void task.destroy().finally(() => worker.destroy());
+      void work.finally(() => { void task.destroy().finally(() => worker.destroy()); });
     };
   }, [documentId, page, highlight, availableWidth]);
 
