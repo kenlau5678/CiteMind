@@ -10,6 +10,8 @@
 | --- | --- | --- |
 | ![CiteMind welcome screen](docs/images/citemind-welcome.png) | ![CiteMind PDF upload](docs/images/citemind-upload.png) | ![CiteMind citation viewer](docs/images/citemind-workspace.png) |
 
+![CiteMind AI formula rendering](docs/images/citemind-formulas.png)
+
 CiteMind is a local-first course knowledge base for lecture notes, student notes, and papers. It answers questions only from the uploaded material, attaches a page-level citation to every supported claim, and opens the exact PDF page behind each citation.
 
 > Status: working v0.1 MVP. Text-based PDFs, single user, Windows-first.
