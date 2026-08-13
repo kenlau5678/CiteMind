@@ -94,15 +94,15 @@ button { color: inherit; }
 .message p, .math-text { margin: 0; font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
 .math-text .katex-display { margin: .75em 0; overflow-x: auto; overflow-y: hidden; }
 .citations { display: grid; gap: 6px; margin-top: 12px; }
-.citations button { text-align: left; border: 1px solid #d9ddd5; background: #fff; border-radius: 8px; padding: 9px 10px; cursor: pointer; }
-.citations button:hover { border-color: #789487; background: #f7faf7; }
-.citations span { color: var(--sage); display: block; font-size: 10px; font-weight: 700; }
-.citations q { display: block; color: #6f7773; font-size: 10px; line-height: 1.45; margin-top: 3px; }
-.citation-formula-note { display: block; margin-top: 6px; color: #9a6b1e; font-size: 9px; }
+.citations button { text-align: left; border: 1px solid #d9ddd5; background: #fff; border-radius: 8px; padding: 9px; cursor: pointer; }
+.citations button:hover { border-color: #789487; background: #f7faf7; box-shadow: 0 3px 12px #344a3e12; }
+.citation-source { color: var(--sage); display: block; padding: 0 1px; font-size: 10px; font-weight: 700; }
 .citation-preview { position: relative; display: none; overflow: hidden; margin-top: 8px; min-height: 82px; border: 1px solid #e1e3dc; border-radius: 6px; background: #f3f3ef; }
 .citation-preview.ready { display: block; }
 .citation-preview canvas { display: block; width: 100%; height: auto; background: white; }
 .citation-preview-label { position: absolute; z-index: 1; top: 6px; right: 6px; padding: 3px 6px; border-radius: 4px; background: #26352fdb; color: white !important; font-size: 8px !important; letter-spacing: .04em; }
+.citation-open-hint { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; padding: 0 2px; color: #6f7c75; font-size: 9px; }
+.citation-open-hint b { color: var(--sage); font-size: 13px; }
 .thinking { display: flex; align-items: center; gap: 4px; color: #7d8882; font-size: 10px; }
 .thinking i { width: 5px; height: 5px; border-radius: 50%; background: #7d998b; animation: bounce .8s infinite alternate; }
 .thinking i:nth-child(2) { animation-delay: .2s; }.thinking i:nth-child(3) { animation-delay: .4s; margin-right: 5px; }

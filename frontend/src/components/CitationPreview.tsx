@@ -8,16 +8,6 @@ export function cleanCitationText(text: string) {
   return text.replace(new RegExp(BAD_GLYPHS.source, "g"), " ").replace(/\s+/g, " ").trim();
 }
 
-export function hasUnmappedFormulaGlyphs(text: string) {
-  return BAD_GLYPHS.test(text);
-}
-
-export function citationExcerpt(text: string) {
-  const clean = cleanCitationText(text);
-  const firstChinese = clean.search(/[\p{Script=Han}]{2}/u);
-  return hasUnmappedFormulaGlyphs(text) && firstChinese > 0 ? clean.slice(firstChinese) : clean;
-}
-
 function anchorTerms(text: string) {
   const terms: string[] = [];
   for (const sequence of cleanCitationText(text).match(/[\p{Script=Han}]{4,}/gu) ?? []) {
@@ -60,7 +50,7 @@ export function CitationPreview({ documentId, page, content }: { documentId: num
       await pdfPage.render({ canvas: pageCanvas, canvasContext: context, viewport }).promise;
       if (cancelled) return;
 
-      const cropHeight = Math.min(210, pageCanvas.height);
+      const cropHeight = Math.min(260, pageCanvas.height);
       const anchorY = transformed?.[5] ?? pageCanvas.height * 0.25;
       const cropTop = Math.max(0, Math.min(pageCanvas.height - cropHeight, anchorY - 80));
       const canvas = canvasRef.current;
@@ -82,7 +72,7 @@ export function CitationPreview({ documentId, page, content }: { documentId: num
 
   return (
     <span className={ready ? "citation-preview ready" : "citation-preview"} aria-label="Original PDF evidence preview">
-      <span className="citation-preview-label">{/[=+−]|[˙¨α-ω]/u.test(content) ? "原页公式预览" : "原页证据预览"}</span>
+      <span className="citation-preview-label">原页预览</span>
       <canvas ref={canvasRef} />
     </span>
   );
