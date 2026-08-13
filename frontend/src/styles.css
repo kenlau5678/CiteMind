@@ -54,11 +54,17 @@ button { color: inherit; }
 .source-card.active::after { content: ""; position: absolute; bottom: -1px; left: 15px; right: 15px; height: 2px; background: var(--sage); }
 .source-card strong { display: block; margin-top: 7px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 16px; }
 .source-card small { color: var(--muted); font-size: 10px; }
+.source-card.processing { background: #f4f8f3; }
+.document-progress { display: block; color: #4f735f !important; }
+.document-progress progress { display: block; width: 100%; height: 4px; margin-top: 3px; accent-color: #6f9681; }
+.document-failed { color: #9a554e !important; }
+.retry-document { position: absolute; right: 9px; bottom: 8px; border: 0; border-radius: 5px; background: #f2dfdc; color: #87463f; padding: 3px 7px; font-size: 9px; font-weight: 700; cursor: pointer; }
 .kind { padding: 2px 6px; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; border-radius: 4px; }
 .kind.lecture { background: #e1e9df; color: #496b5c; }
 .kind.notes { background: #eee3c9; color: #81662b; }
 .kind.paper { background: #e3e0ec; color: #655b82; }
 .quiet-delete { position: absolute; right: 7px; top: 7px; border: 0; background: transparent; color: #a6aca8; cursor: pointer; opacity: 0; }
+.quiet-delete:disabled { cursor: default; }
 .source-card:hover .quiet-delete { opacity: 1; }
 .empty-source { flex: 1; min-height: 66px; border: 1px dashed #bcc5bf; background: transparent; color: #68766f; border-radius: 10px; cursor: pointer; }
 .config-notice { background: #fff6de; color: #735a22; border: 1px solid #ead39a; border-radius: 7px; padding: 7px 10px; margin: -6px 0 10px; font-size: 10px; }

@@ -34,6 +34,7 @@ def init_db() -> None:
                 stored_name TEXT NOT NULL UNIQUE,
                 size_bytes INTEGER NOT NULL,
                 page_count INTEGER NOT NULL DEFAULT 0,
+                processed_pages INTEGER NOT NULL DEFAULT 0,
                 status TEXT NOT NULL DEFAULT 'processing',
                 error TEXT,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -87,6 +88,13 @@ def init_db() -> None:
                 UNIQUE(document_id, page_number)
             );
             """
+        )
+        columns = {row[1] for row in db.execute("PRAGMA table_info(documents)")}
+        if "processed_pages" not in columns:
+            db.execute("ALTER TABLE documents ADD COLUMN processed_pages INTEGER NOT NULL DEFAULT 0")
+        db.execute(
+            "UPDATE documents SET status='failed', error='Processing was interrupted. Retry to continue.' "
+            "WHERE status='processing'"
         )
 
 

@@ -26,6 +26,7 @@ export const api = {
     form.append("file", file);
     return request<Document>(`/api/courses/${courseId}/documents`, { method: "POST", body: form });
   },
+  retryDocument: (id: number) => request<Document>(`/api/documents/${id}/retry`, { method: "POST" }),
   deleteDocument: (id: number) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
   messages: (courseId: number) => request<Message[]>(`/api/courses/${courseId}/messages`),
   clearMessages: (courseId: number) => request<void>(`/api/courses/${courseId}/messages`, { method: "DELETE" }),

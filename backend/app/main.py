@@ -3,6 +3,7 @@ import math
 import mimetypes
 import os
 import re
+import threading
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -172,7 +173,7 @@ def _keyword_results(db, course_id: int, query: str, document_id: int | None, li
                 f"""SELECT c.*, d.title, d.filename, bm25(chunks_fts) keyword_score
                     FROM chunks_fts JOIN chunks c ON c.id=chunks_fts.rowid
                     JOIN documents d ON d.id=c.document_id
-                    WHERE chunks_fts MATCH ? AND c.course_id=? {scope}
+                    WHERE chunks_fts MATCH ? AND c.course_id=? AND d.status='ready' {scope}
                     ORDER BY keyword_score LIMIT ?""",
                 params,
             ).fetchall())
@@ -183,7 +184,7 @@ def _keyword_results(db, course_id: int, query: str, document_id: int | None, li
     return rows(db.execute(
         f"""SELECT c.*, d.title, d.filename, 0 keyword_score FROM chunks c
             JOIN documents d ON d.id=c.document_id
-            WHERE c.course_id=? AND c.content LIKE ? {scope} LIMIT ?""",
+            WHERE c.course_id=? AND d.status='ready' AND c.content LIKE ? {scope} LIMIT ?""",
         params,
     ).fetchall())
 
@@ -201,7 +202,7 @@ def _cjk_results(db, course_id: int, query: str, document_id: int | None, limit:
     if not query_terms:
         return []
     sql = """SELECT c.*, d.title, d.filename FROM chunks c
-             JOIN documents d ON d.id=c.document_id WHERE c.course_id=?"""
+             JOIN documents d ON d.id=c.document_id WHERE c.course_id=? AND d.status='ready'"""
     params = [course_id]
     if document_id is not None:
         sql += " AND c.document_id=?"
@@ -262,7 +263,7 @@ def search_chunks(course_id: int, request: SearchRequest):
         cjk = _cjk_results(db, course_id, request.query, request.document_id, 30)
         sql = """SELECT c.*, d.title, d.filename FROM chunks c
                  JOIN documents d ON d.id=c.document_id
-                 WHERE c.course_id=? AND c.embedding IS NOT NULL"""
+                 WHERE c.course_id=? AND d.status='ready' AND c.embedding IS NOT NULL"""
         params = [course_id]
         if request.document_id:
             sql += " AND c.document_id=?"
@@ -374,6 +375,60 @@ def list_documents(course_id: int):
         return rows(db.execute("SELECT * FROM documents WHERE course_id=? ORDER BY created_at DESC", (course_id,)).fetchall())
 
 
+def process_scanned_document(document_id: int) -> None:
+    """Continue a scanned document from its last committed page."""
+    try:
+        with connect() as db:
+            document = db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone()
+        if not document:
+            return
+        with fitz.open(FILES_DIR / document["stored_name"]) as pdf:
+            for index in range(document["processed_pages"], pdf.page_count):
+                page = pdf.load_page(index)
+                text = extract_page_text(page)
+                reason = visual_page_reason(page, text)
+                description = model = None
+                if scan_page_needs_ocr(page, text):
+                    image = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False).tobytes("png")
+                    text, description = ai.transcribe_scan_page(image)
+                    reason, model = "scan_ocr", ai.VISION_INDEX_MODEL()
+                pieces = split_page(text)
+                vectors = ai.embed(pieces) if pieces else []
+                with connect() as db:
+                    if not db.execute("SELECT 1 FROM documents WHERE id=?", (document_id,)).fetchone():
+                        return
+                    db.execute("DELETE FROM chunks WHERE document_id=? AND page_number=?", (document_id, index + 1))
+                    db.execute("DELETE FROM page_visuals WHERE document_id=? AND page_number=?", (document_id, index + 1))
+                    db.executemany(
+                        "INSERT INTO chunks(document_id,course_id,page_number,content,embedding) VALUES (?,?,?,?,?)",
+                        [
+                            (document_id, document["course_id"], index + 1, content, json.dumps(vector))
+                            for content, vector in zip(pieces, vectors)
+                        ],
+                    )
+                    if reason:
+                        db.execute(
+                            "INSERT INTO page_visuals(document_id,page_number,reason,description,model) VALUES (?,?,?,?,?)",
+                            (document_id, index + 1, reason, description, model),
+                        )
+                    db.execute("UPDATE documents SET processed_pages=? WHERE id=?", (index + 1, document_id))
+        with connect() as db:
+            if db.execute("SELECT count(*) FROM chunks WHERE document_id=?", (document_id,)).fetchone()[0] == 0:
+                raise ValueError("No readable text was found in this PDF")
+            db.execute("UPDATE documents SET status='ready', error=NULL WHERE id=?", (document_id,))
+    except Exception as exc:  # worker boundary: persist any page/model failure for retry
+        with connect() as db:
+            db.execute(
+                "UPDATE documents SET status='failed', error=? WHERE id=?",
+                ((str(exc) or "Document processing failed")[:300], document_id),
+            )
+
+
+def start_scanned_processing(document_id: int) -> None:
+    # ponytail: in-process worker suits one local user; use a durable queue for multi-user hosting.
+    threading.Thread(target=process_scanned_document, args=(document_id,), daemon=True).start()
+
+
 @app.post("/api/courses/{course_id}/documents", status_code=201)
 def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = File(...)):
     require_course(course_id)
@@ -413,15 +468,18 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
                 raise HTTPException(413, f"Scanned PDF exceeds the {MAX_SCAN_PAGES}-page OCR limit")
             if scans and not ai.API_KEY():
                 raise HTTPException(503, "Scanned PDF pages require OPENAI_API_KEY for visual OCR")
-            for index in scans:
-                image = pdf.load_page(index).get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False).tobytes("png")
-                searchable, description = ai.transcribe_scan_page(image)
-                pages[index].update({
-                    "text": searchable,
-                    "reason": "scan_ocr",
-                    "description": description,
-                    "model": ai.VISION_INDEX_MODEL(),
-                })
+        if scans:
+            with connect() as db:
+                cursor = db.execute(
+                    """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,status)
+                       VALUES (?,?,?,?,?,?,?,'processing')""",
+                    (course_id, Path(file.filename).stem, kind, file.filename, stored_name, size, len(pages)),
+                )
+                document_id = cursor.lastrowid
+                document = dict(db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone())
+            keep_file = True
+            start_scanned_processing(document_id)
+            return document
         pieces = [
             (page["number"], chunk)
             for page in pages
@@ -434,9 +492,9 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
             vectors.extend(ai.embed([content for _, content in pieces[start:start + 64]]))
         with connect() as db:
             cursor = db.execute(
-                """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,status)
-                   VALUES (?,?,?,?,?,?,?,'ready')""",
-                (course_id, Path(file.filename).stem, kind, file.filename, stored_name, size, len(pages)),
+                """INSERT INTO documents(course_id,title,kind,filename,stored_name,size_bytes,page_count,processed_pages,status)
+                   VALUES (?,?,?,?,?,?,?,?,'ready')""",
+                (course_id, Path(file.filename).stem, kind, file.filename, stored_name, size, len(pages), len(pages)),
             )
             document_id = cursor.lastrowid
             db.executemany(
@@ -462,6 +520,20 @@ def upload_document(course_id: int, kind: str = Form(...), file: UploadFile = Fi
             target.unlink(missing_ok=True)
 
 
+@app.post("/api/documents/{document_id}/retry", status_code=202)
+def retry_document(document_id: int):
+    with connect() as db:
+        document = db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone()
+        if not document:
+            raise HTTPException(404, "Document not found")
+        if document["status"] != "failed":
+            raise HTTPException(409, "Only failed documents can be retried")
+        db.execute("UPDATE documents SET status='processing', error=NULL WHERE id=?", (document_id,))
+        result = dict(db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone())
+    start_scanned_processing(document_id)
+    return result
+
+
 @app.get("/api/documents/{document_id}/file")
 def document_file(document_id: int):
     with connect() as db:
@@ -477,6 +549,8 @@ def delete_document(document_id: int):
         document = db.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone()
         if not document:
             raise HTTPException(404, "Document not found")
+        if document["status"] == "processing":
+            raise HTTPException(409, "Wait for processing to finish before deleting this document")
         db.execute("DELETE FROM messages WHERE course_id=?", (document["course_id"],))
         db.execute("DELETE FROM documents WHERE id=?", (document_id,))
     (FILES_DIR / document["stored_name"]).unlink(missing_ok=True)

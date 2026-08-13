@@ -29,7 +29,7 @@ Most document chat demos optimize for a fluent answer. CiteMind optimizes for a 
 - AI answers typeset inline and display LaTeX, including fractions and matrices;
 - known legacy `Symbol` formula glyphs are decoded for retrieval, while every citation retains an exact original-page visual preview;
 - diagram, plot, and formula questions can inspect one relevant original page with vision; page descriptions are cached after the first use;
-- image-only scanned pages are transcribed once during upload and remain searchable with their original PDF page numbers;
+- image-only scanned pages are transcribed in the background with live page progress, resumable failures, and original PDF page numbers;
 - weak retrieval produces “no reliable evidence” instead of a confident guess.
 
 ## Quick start
@@ -122,7 +122,7 @@ cd ..\frontend
 npm run build
 ```
 
-The tests cover page provenance, scanned-PDF OCR and cleanup, complete deletion, visual-page selection and caching, safe visual fallback, the full ask/citation response, insufficient-evidence handling, and rejection of fabricated, mismatched, or unsupported answers.
+The tests cover page provenance, background scanned-PDF OCR, page-level retry and cleanup, complete deletion, visual-page selection and caching, safe visual fallback, the full ask/citation response, insufficient-evidence handling, and rejection of fabricated, mismatched, or unsupported answers.
 
 The self-authored English and Chinese demo courses and 30-question retrieval benchmark live in `sample-data/`. Generate the PDFs, index both in one temporary course, and evaluate top-5 page recall:
 

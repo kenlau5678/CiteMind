@@ -12,8 +12,10 @@ export type Document = {
   filename: string;
   kind: "lecture" | "notes" | "paper";
   page_count: number;
+  processed_pages: number;
   size_bytes: number;
-  status: string;
+  status: "processing" | "ready" | "failed";
+  error?: string | null;
 };
 
 export type Citation = {

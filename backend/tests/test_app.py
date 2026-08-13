@@ -1,4 +1,5 @@
 import json
+import time
 
 from app.main import normalize_private_glyphs, split_page, visual_page_reason
 
@@ -45,6 +46,19 @@ def scanned_pdf(page_count=1):
     data = output.tobytes()
     output.close()
     return data
+
+
+def wait_document(client, course_id, document_id, status, timeout=3):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        document = next(
+            item for item in client.get(f"/api/courses/{course_id}/documents").json()
+            if item["id"] == document_id
+        )
+        if document["status"] == status:
+            return document
+        time.sleep(0.02)
+    raise AssertionError(f"Document did not reach {status}")
 
 
 def test_chinese_sentences_split_without_spaces():
@@ -221,6 +235,9 @@ def test_scanned_pdf_is_transcribed_with_original_page_numbers(client, monkeypat
         files={"file": ("scan.pdf", scanned_pdf(2), "application/pdf")},
     )
     assert response.status_code == 201, response.text
+    assert response.json()["status"] == "processing"
+    document = wait_document(http, course_id, response.json()["id"], "ready")
+    assert document["processed_pages"] == 2
     assert len(calls) == 2
     assert all(image.startswith(b"\x89PNG") for image in calls)
     with db_module.connect() as db:
@@ -232,6 +249,41 @@ def test_scanned_pdf_is_transcribed_with_original_page_numbers(client, monkeypat
     assert "change in momentum" in chunks[1]["content"]
     assert [row["reason"] for row in visuals] == ["scan_ocr", "scan_ocr"]
     assert visuals[0]["model"] == main.ai.VISION_INDEX_MODEL()
+
+
+def test_scanned_pdf_retry_continues_after_last_completed_page(client, monkeypatch):
+    http, main, _ = client
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    calls = []
+    fail = {"enabled": True}
+
+    def transcribe(image):
+        calls.append(image)
+        if len(calls) == 2 and fail["enabled"]:
+            raise main.ai.AIError("temporary OCR failure")
+        return "Recovered scan text", '{"summary":"scan","confidence":0.9}'
+
+    monkeypatch.setattr(main.ai, "transcribe_scan_page", transcribe)
+    course_id = create_course(http)
+    upload_response = http.post(
+        f"/api/courses/{course_id}/documents",
+        data={"kind": "notes"},
+        files={"file": ("retry-scan.pdf", scanned_pdf(2), "application/pdf")},
+    )
+    document_id = upload_response.json()["id"]
+    failed = wait_document(http, course_id, document_id, "failed")
+    assert failed["processed_pages"] == 1
+    assert "temporary OCR failure" in failed["error"]
+    assert http.post(
+        f"/api/courses/{course_id}/search", json={"query": "Recovered scan text"}
+    ).json() == []
+
+    fail["enabled"] = False
+    retry = http.post(f"/api/documents/{document_id}/retry")
+    assert retry.status_code == 202
+    ready = wait_document(http, course_id, document_id, "ready")
+    assert ready["processed_pages"] == 2
+    assert len(calls) == 3
 
 
 def test_scanned_pdf_without_api_key_is_rejected_and_cleaned_up(client):

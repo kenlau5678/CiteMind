@@ -24,6 +24,8 @@ export default function App() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const selectedCourse = courses.find((course) => course.id === courseId);
+  const readyDocuments = documents.filter((document) => document.status === "ready");
+  const hasProcessingDocuments = documents.some((document) => document.status === "processing");
 
   async function refreshCourses(selectFirst = false) {
     const data = await api.courses();
@@ -45,6 +47,16 @@ export default function App() {
       setHighlight(undefined);
     }).catch(showError);
   }, [courseId]);
+  useEffect(() => {
+    if (!courseId || !hasProcessingDocuments) return;
+    const timer = window.setInterval(() => {
+      api.documents(courseId).then((docs) => {
+        setDocuments(docs);
+        setActiveDocument((current) => docs.find((item) => item.id === current?.id) ?? docs[0] ?? null);
+      }).catch(showError);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [courseId, hasProcessingDocuments]);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, busy]);
 
   function showError(reason: unknown) {
@@ -112,6 +124,14 @@ export default function App() {
     } catch (reason) { showError(reason); }
   }
 
+  async function retryDocument(document: Document) {
+    try {
+      const retried = await api.retryDocument(document.id);
+      setDocuments((current) => current.map((item) => item.id === retried.id ? retried : item));
+      setActiveDocument((current) => current?.id === retried.id ? retried : current);
+    } catch (reason) { showError(reason); }
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -146,11 +166,14 @@ export default function App() {
 
           <div className="source-strip">
             {documents.map((document) => (
-              <article key={document.id} className={activeDocument?.id === document.id ? "source-card active" : "source-card"} onClick={() => { setActiveDocument(document); setPage(1); setHighlight(undefined); }}>
+              <article key={document.id} className={`${activeDocument?.id === document.id ? "source-card active" : "source-card"} ${document.status}`} onClick={() => { setActiveDocument(document); setPage(1); setHighlight(undefined); }}>
                 <span className={`kind ${document.kind}`}>{kindNames[document.kind]}</span>
                 <strong title={document.title}>{document.title}</strong>
-                <small>{document.page_count} pages</small>
-                <button className="quiet-delete" aria-label={`Delete ${document.title}`} onClick={(event) => { event.stopPropagation(); removeDocument(document); }}>×</button>
+                {document.status === "processing" && <small className="document-progress">OCR {document.processed_pages} / {document.page_count} pages<progress aria-label={`OCR progress for ${document.title}`} value={document.processed_pages} max={document.page_count} /></small>}
+                {document.status === "failed" && <small className="document-failed" title={document.error ?? undefined}>{document.processed_pages < document.page_count ? `Paused at page ${document.processed_pages + 1}` : "Needs attention"}</small>}
+                {document.status === "ready" && <small>{document.page_count} pages</small>}
+                {document.status === "failed" && <button className="retry-document" aria-label={`Retry ${document.title}`} onClick={(event) => { event.stopPropagation(); retryDocument(document); }}>Retry</button>}
+                <button className="quiet-delete" disabled={document.status === "processing"} aria-label={`Delete ${document.title}`} onClick={(event) => { event.stopPropagation(); removeDocument(document); }}>×</button>
               </article>
             ))}
             {!documents.length && <button className="empty-source" onClick={() => setShowUpload(true)}>Drop in a PDF to start your library →</button>}
@@ -168,7 +191,7 @@ export default function App() {
                 <div><span className="eyebrow">Evidence assistant</span><strong>Ask CiteMind</strong></div>
                 <select aria-label="Answer scope" value={scopeDocumentId ?? "course"} onChange={(event) => changeScope(event.target.value)}>
                   <option value="course">Entire course</option>
-                  {documents.map((document) => <option key={document.id} value={document.id}>Only: {document.title}</option>)}
+                  {readyDocuments.map((document) => <option key={document.id} value={document.id}>Only: {document.title}</option>)}
                 </select>
               </header>
               <div className="messages">
@@ -195,7 +218,7 @@ export default function App() {
               </div>
               {error && <button className="error-banner" onClick={() => setError("")}>{error}<span>×</span></button>}
               <form className="ask-box" onSubmit={submitQuestion}>
-                <textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={documents.length ? "Ask a question about your materials…" : "Add a PDF before asking a question"} disabled={!documents.length || busy} rows={2} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+                <textarea value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={readyDocuments.length ? "Ask a question about your materials…" : hasProcessingDocuments ? "Wait for PDF processing to finish" : "Add a PDF before asking a question"} disabled={!readyDocuments.length || busy} rows={2} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
                 <button aria-label="Ask" disabled={!question.trim() || busy}>↑</button>
                 <small>CiteMind may be wrong. Always check the cited source.</small>
               </form>
@@ -229,8 +252,8 @@ function UploadDialog({ courseId, onClose, onUploaded, onError }: { courseId: nu
       <div className="kind-picker">{Object.entries(kindNames).map(([value, label]) => <button key={value} className={kind === value ? "active" : ""} onClick={() => setKind(value as Document["kind"])}>{label}</button>)}</div>
       <label className={uploading ? "file-drop uploading" : "file-drop"}>
         <input type="file" accept="application/pdf,.pdf" disabled={uploading} onChange={(event) => choose(event.target.files?.[0])} />
-        <span>{uploading ? "Reading pages and building the index…" : "Choose a PDF"}</span>
-        <small>{uploading ? "Scanned pages may take a little longer · keep this window open" : "Your original file stays on this computer"}</small>
+        <span>{uploading ? "Uploading and checking pages…" : "Choose a PDF"}</span>
+        <small>{uploading ? "You can close this window once the upload finishes" : "Your original file stays on this computer"}</small>
       </label>
     </section>
   </div>;
