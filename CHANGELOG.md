@@ -10,8 +10,9 @@
 ### Validated
 
 - 27 focused backend checks, a production frontend build, and 30/30 public bilingual retrieval questions.
-- Seven additional private mechanics PDFs, bringing the local course to 14 documents and 373 selectable-text pages.
+- Nineteen additional private mechanics PDFs across statics, dynamics, and analytical mechanics, bringing the local course to 26 documents and 655 selectable-text pages.
 - 7/7 added mechanics questions retrieved their expected page in the top five; every expected result ranked first or second.
+- 12/12 complete-course extension questions retrieved their expected page in the top five; three real AI answers returned valid chapter citations.
 - Production-browser citation previews loaded as original-page images, and the friction-angle citation opened page 4/25 with no browser errors.
 
 ## 0.1.7 - 2026-08-13
