@@ -107,7 +107,7 @@ cd ..\frontend
 npm run build
 ```
 
-The tests cover page provenance, scanned-PDF rejection, complete deletion, the full ask/citation response, and rejection of fabricated or mismatched citation numbers.
+The tests cover page provenance, scanned-PDF rejection, complete deletion, the full ask/citation response, insufficient-evidence handling, and rejection of fabricated, mismatched, or unsupported answers.
 
 The self-authored demo course and 20-question retrieval benchmark live in `sample-data/`. Generate the PDF, upload it, and evaluate its top-5 page recall:
 
@@ -122,7 +122,7 @@ See the dated [validation report](docs/VALIDATION.md) for the complete test matr
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
-The current engineering candidate is documented in the [v0.1.0 release notes](docs/RELEASE_NOTES_v0.1.0.md). It is not represented as v1.0 until the real-course gate passes.
+The current engineering candidate is documented in the [v0.1.1 release notes](docs/RELEASE_NOTES_v0.1.1.md). It is not represented as v1.0 until the real-course gate passes.
 
 ## Repository map
 

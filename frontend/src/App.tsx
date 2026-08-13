@@ -63,11 +63,11 @@ export default function App() {
     if (!courseId) return;
     const next = value === "course" ? null : Number(value);
     if (next === scopeDocumentId) return;
-    setScopeDocumentId(next);
-    if (messages.length && window.confirm("Changing scope starts a new conversation. Clear this chat?")) {
+    try {
       await api.clearMessages(courseId);
+      setScopeDocumentId(next);
       setMessages([]);
-    }
+    } catch (reason) { showError(reason); }
   }
 
   async function submitQuestion(event: FormEvent) {

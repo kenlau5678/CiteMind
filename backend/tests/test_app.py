@@ -36,6 +36,7 @@ def test_ask_returns_only_validated_source_metadata(client, sample_pdf, monkeypa
     monkeypatch.setattr(main.ai, "answer", lambda question, evidence, history: {
         "answer": "Convolution shares weights [1].",
         "citation_numbers": [1],
+        "insufficient": False,
     })
     response = http.post(f"/api/courses/{course_id}/ask", json={"query": "What does convolution do?", "top_k": 5})
     assert response.status_code == 200, response.text
@@ -43,6 +44,7 @@ def test_ask_returns_only_validated_source_metadata(client, sample_pdf, monkeypa
     assert citation["document_id"] == document["id"]
     assert citation["page_number"] in {1, 2}
     assert citation["content"]
+    assert response.json()["insufficient"] is False
 
 
 def test_delete_document_removes_file_chunks_and_chat(client, sample_pdf, monkeypatch):
@@ -50,7 +52,7 @@ def test_delete_document_removes_file_chunks_and_chat(client, sample_pdf, monkey
     course_id = create_course(http)
     document = upload(http, course_id, sample_pdf)
     monkeypatch.setattr(main.ai, "answer", lambda question, evidence, history: {
-        "answer": "The material says this [1].", "citation_numbers": [1]
+        "answer": "The material says this [1].", "citation_numbers": [1], "insufficient": False
     })
     assert http.post(f"/api/courses/{course_id}/ask", json={"query": "training data"}).status_code == 200
     assert http.delete(f"/api/documents/{document['id']}").status_code == 204
@@ -58,6 +60,21 @@ def test_delete_document_removes_file_chunks_and_chat(client, sample_pdf, monkey
         assert db.execute("SELECT count(*) FROM chunks").fetchone()[0] == 0
         assert db.execute("SELECT count(*) FROM messages").fetchone()[0] == 0
     assert http.get(f"/api/documents/{document['id']}/file").status_code == 404
+
+
+def test_insufficient_answer_is_returned_without_fabricated_citations(client, sample_pdf, monkeypatch):
+    http, main, _ = client
+    course_id = create_course(http)
+    upload(http, course_id, sample_pdf)
+    monkeypatch.setattr(main.ai, "answer", lambda question, evidence, history: {
+        "answer": "The supplied material does not answer this question.",
+        "citation_numbers": [],
+        "insufficient": True,
+    })
+    response = http.post(f"/api/courses/{course_id}/ask", json={"query": "What is the tuition fee?"})
+    assert response.status_code == 200
+    assert response.json()["insufficient"] is True
+    assert response.json()["citations"] == []
 
 
 def test_scanned_pdf_is_rejected(client):
@@ -75,4 +92,3 @@ def test_scanned_pdf_is_rejected(client):
     )
     assert response.status_code == 422
     assert "Scanned PDFs" in response.json()["detail"]
-

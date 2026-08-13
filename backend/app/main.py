@@ -26,7 +26,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="CiteMind API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="CiteMind API", version="0.1.1", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -75,7 +75,15 @@ def split_page(text: str) -> list[str]:
 
 
 def _keyword_results(db, course_id: int, query: str, document_id: int | None, limit: int):
-    tokens = re.findall(r"[\w\u4e00-\u9fff]+", query.lower())
+    stopwords = {
+        "a", "an", "and", "are", "as", "at", "be", "by", "do", "does", "for", "from",
+        "how", "i", "in", "is", "it", "of", "on", "or", "the", "this", "to", "what",
+        "when", "where", "which", "why", "with",
+    }
+    tokens = [
+        token for token in re.findall(r"[\w\u4e00-\u9fff]+", query.lower())
+        if (len(token) >= 2 or "\u4e00" <= token <= "\u9fff") and token not in stopwords
+    ]
     match = " OR ".join(f'"{token}"' for token in tokens[:12])
     scope = "AND c.document_id=?" if document_id else ""
     params = [match, course_id] + ([document_id] if document_id else []) + [limit]
@@ -307,7 +315,7 @@ def ask(course_id: int, body: AskRequest):
             "INSERT INTO messages(course_id,role,content,citations,scope_document_id) VALUES (?,?,?,?,?)",
             (course_id, "assistant", result["answer"], json.dumps(citations), body.document_id),
         )
-    return {"answer": result["answer"], "citations": citations}
+    return {"answer": result["answer"], "citations": citations, "insufficient": result["insufficient"]}
 
 
 FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
