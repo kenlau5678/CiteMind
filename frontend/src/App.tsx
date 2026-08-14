@@ -6,6 +6,9 @@ import { CitationPreview } from "./components/CitationPreview";
 import type { Citation, Course, Document, Message } from "./types";
 
 const kindNames = { lecture: "Lecture", notes: "Notes", paper: "Paper" };
+const uniqueCitations = (citations: Citation[]) => citations.filter((citation, index) =>
+  citations.findIndex((item) => item.document_id === citation.document_id && item.page_number === citation.page_number) === index
+);
 
 export default function App() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -28,6 +31,7 @@ export default function App() {
   const selectedCourse = courses.find((course) => course.id === courseId);
   const readyDocuments = documents.filter((document) => document.status === "ready");
   const hasProcessingDocuments = documents.some((document) => document.status === "processing");
+  const draggedDocumentIndex = documents.findIndex((document) => document.id === draggedDocumentId);
 
   async function refreshCourses(selectFirst = false) {
     const data = await api.courses();
@@ -168,6 +172,46 @@ export default function App() {
     void moveDocumentTo(documentId, target + (target > from ? 1 : 0));
   }
 
+  function documentDropIndex(clientX: number) {
+    const cards = Array.from(window.document.querySelectorAll<HTMLElement>("[data-document-index]"));
+    const target = cards.find((card) => clientX < card.getBoundingClientRect().left + card.getBoundingClientRect().width / 2);
+    return target ? Number(target.dataset.documentIndex) : documents.length;
+  }
+
+  function startDocumentDrag(event: React.PointerEvent<HTMLSpanElement>, documentId: number, index: number) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const pointerId = event.pointerId;
+    setDraggedDocumentId(documentId);
+    setDropIndex(index);
+
+    const move = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId === pointerId) setDropIndex(documentDropIndex(moveEvent.clientX));
+    };
+    const cleanup = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", cancel);
+    };
+    const finish = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) return;
+      cleanup();
+      void moveDocumentTo(documentId, documentDropIndex(upEvent.clientX));
+      setDraggedDocumentId(null);
+      setDropIndex(null);
+    };
+    const cancel = (cancelEvent: PointerEvent) => {
+      if (cancelEvent.pointerId !== pointerId) return;
+      cleanup();
+      setDraggedDocumentId(null);
+      setDropIndex(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", cancel);
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -200,46 +244,31 @@ export default function App() {
             <button className="primary" onClick={() => setShowUpload(true)}>＋ Add PDF</button>
           </header>
 
-          <div
-            className="source-strip"
-            onDragOver={(event) => { if (draggedDocumentId !== null) event.preventDefault(); }}
-            onDrop={(event) => {
-              event.preventDefault();
-              const sourceId = Number(event.dataTransfer.getData("text/plain")) || draggedDocumentId;
-              if (sourceId && dropIndex !== null) void moveDocumentTo(sourceId, dropIndex);
-              setDraggedDocumentId(null);
-              setDropIndex(null);
-            }}
-          >
+          <div className="source-strip">
             {documents.map((document, index) => (
               <Fragment key={document.id}>
-              {draggedDocumentId !== null && dropIndex === index && <article className="source-card drop-placeholder" aria-hidden="true"><span>Move here</span></article>}
+              {draggedDocumentId !== null && dropIndex === index && dropIndex !== draggedDocumentIndex && dropIndex !== draggedDocumentIndex + 1 && <article className="source-card drop-placeholder" aria-hidden="true"><span>Move here</span></article>}
               <article
-                draggable
+                data-document-index={index}
                 className={`${activeDocument?.id === document.id ? "source-card active" : "source-card"} ${document.status} ${draggedDocumentId === document.id ? "dragging" : ""}`}
                 onClick={() => openDocument(document)}
-                onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", String(document.id)); setDraggedDocumentId(document.id); }}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  event.dataTransfer.dropEffect = "move";
-                  const bounds = event.currentTarget.getBoundingClientRect();
-                  setDropIndex(index + (event.clientX > bounds.left + bounds.width / 2 ? 1 : 0));
-                }}
-                onDragEnd={() => { setDraggedDocumentId(null); setDropIndex(null); }}
               >
                 <span className={`kind ${document.kind}`}>{kindNames[document.kind]}</span>
-                <button
+                <span
                   className="drag-handle"
-                  draggable
+                  role="button"
+                  tabIndex={0}
+                  aria-grabbed={draggedDocumentId === document.id}
                   aria-label={`Reorder ${document.title}. Use left and right arrow keys.`}
                   title="Drag to reorder"
                   onClick={(event) => event.stopPropagation()}
+                  onPointerDown={(event) => startDocumentDrag(event, document.id, index)}
                   onKeyDown={(event) => {
                     const offset = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
                     const target = documents[documents.findIndex((item) => item.id === document.id) + offset];
                     if (offset && target) { event.preventDefault(); void moveDocument(document.id, target.id); }
                   }}
-                >⠿</button>
+                >⠿</span>
                 <strong title={document.title}>{document.title}</strong>
                 {document.status === "processing" && <small className="document-progress">OCR {document.processed_pages} / {document.page_count} pages<progress aria-label={`OCR progress for ${document.title}`} value={document.processed_pages} max={document.page_count} /></small>}
                 {document.status === "failed" && <small className="document-failed" title={document.error ?? undefined}>{document.processed_pages < document.page_count ? `Paused at page ${document.processed_pages + 1}` : "Needs attention"}</small>}
@@ -249,7 +278,7 @@ export default function App() {
               </article>
               </Fragment>
             ))}
-            {draggedDocumentId !== null && dropIndex === documents.length && <article className="source-card drop-placeholder" aria-hidden="true"><span>Move here</span></article>}
+            {draggedDocumentId !== null && dropIndex === documents.length && dropIndex !== draggedDocumentIndex + 1 && <article className="source-card drop-placeholder" aria-hidden="true"><span>Move here</span></article>}
             {!documents.length && <button className="empty-source" onClick={() => setShowUpload(true)}>Drop in a PDF to start your library →</button>}
           </div>
 
@@ -277,7 +306,7 @@ export default function App() {
                     <span className="role">{message.role === "user" ? "You" : "CiteMind"}</span>
                     {message.role === "assistant" ? <MathText>{message.content}</MathText> : <p>{message.content}</p>}
                     {!!message.citations?.length && <div className="citations">
-                      {message.citations.map((citation) => (
+                      {uniqueCitations(message.citations).map((citation) => (
                         <button key={citation.number} aria-label={`打开 ${citation.title} 第 ${citation.page_number} 页`} onClick={() => openCitation(citation)}>
                           <span className="citation-source">[{citation.number}] {citation.title} · p.{citation.page_number}{citation.visual && <em>视觉核对</em>}</span>
                           <CitationPreview documentId={citation.document_id} page={citation.page_number} content={citation.content} />

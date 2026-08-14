@@ -504,6 +504,18 @@ def test_ask_adds_neighbor_pages_to_heading_matches(client, monkeypatch):
     assert 4 in {item["page_number"] for item in captured["evidence"]}
 
 
+def test_neighbor_context_merges_chunks_from_the_same_pdf_page(client):
+    _, main, _ = client
+    evidence = [
+        {"id": 1, "document_id": 7, "page_number": 4, "content": "Attention formula"},
+        {"id": 2, "document_id": 7, "page_number": 4, "content": "Scaling explanation"},
+    ]
+    merged = main.add_neighbor_context(evidence, max_extra=0)
+    assert len(merged) == 1
+    assert "Attention formula" in merged[0]["content"]
+    assert "Scaling explanation" in merged[0]["content"]
+
+
 def test_formula_query_prefers_page_with_an_explicit_equation(client):
     http, _, db_module = client
     course_id = create_course(http)

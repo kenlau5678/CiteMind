@@ -341,11 +341,12 @@ def search_chunks(course_id: int, request: SearchRequest):
 def add_neighbor_context(evidence: list[dict], max_extra: int = 6) -> list[dict]:
     """Include nearby pages when a section heading ranks above its explanation."""
     if not evidence or max_extra <= 0:
-        return evidence
-    result = list(evidence)
-    seen = {item["id"] for item in evidence}
+        return merge_page_evidence(evidence)
+    result = merge_page_evidence(evidence)
+    base_count = len(result)
+    seen = {(item["document_id"], item["page_number"]) for item in result}
     with connect() as db:
-        for seed in evidence[:4]:
+        for seed in result[:4]:
             neighbors = rows(db.execute(
                 """SELECT c.*, d.title, d.filename FROM chunks c
                    JOIN documents d ON d.id=c.document_id
@@ -353,14 +354,33 @@ def add_neighbor_context(evidence: list[dict], max_extra: int = 6) -> list[dict]
                    ORDER BY c.page_number""",
                 (seed["document_id"], seed["page_number"] - 1, seed["page_number"] + 1),
             ).fetchall())
-            for item in neighbors:
-                if item["id"] in seen:
+            for item in merge_page_evidence(neighbors):
+                page = (item["document_id"], item["page_number"])
+                if page in seen:
                     continue
                 item.pop("embedding", None)
                 result.append(item)
-                seen.add(item["id"])
-                if len(result) >= len(evidence) + max_extra:
+                seen.add(page)
+                if len(result) >= base_count + max_extra:
                     return result
+    return result
+
+
+def merge_page_evidence(evidence: list[dict]) -> list[dict]:
+    """Expose each PDF page once while retaining every distinct chunk on that page."""
+    result = []
+    pages = {}
+    for item in evidence:
+        key = (item["document_id"], item["page_number"])
+        if key not in pages:
+            pages[key] = {**item}
+            result.append(pages[key])
+            continue
+        content = item.get("content", "")
+        if content and content not in pages[key].get("content", ""):
+            pages[key]["content"] = f"{pages[key].get('content', '')}\n\n{content}".strip()
+        if item.get("current_page"):
+            pages[key]["current_page"] = True
     return result
 
 
