@@ -217,7 +217,7 @@ export default function App() {
                 draggable
                 className={`${activeDocument?.id === document.id ? "source-card active" : "source-card"} ${document.status} ${draggedDocumentId === document.id ? "dragging" : ""}`}
                 onClick={() => openDocument(document)}
-                onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", String(document.id)); setDraggedDocumentId(document.id); setDropIndex(index); }}
+                onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", String(document.id)); setDraggedDocumentId(document.id); }}
                 onDragOver={(event) => {
                   event.preventDefault();
                   event.dataTransfer.dropEffect = "move";
@@ -229,6 +229,7 @@ export default function App() {
                 <span className={`kind ${document.kind}`}>{kindNames[document.kind]}</span>
                 <button
                   className="drag-handle"
+                  draggable
                   aria-label={`Reorder ${document.title}. Use left and right arrow keys.`}
                   title="Drag to reorder"
                   onClick={(event) => event.stopPropagation()}
