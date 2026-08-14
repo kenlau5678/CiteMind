@@ -43,16 +43,21 @@ def normalized(text: str) -> str:
     return re.sub(r"\s+", "", text).replace("\\", "").lower()
 
 
+def term_matches(answer: str, term: str, aliases: dict[str, list[str]]) -> bool:
+    return any(normalized(value) in answer for value in [term, *aliases.get(term, [])])
+
+
 def grade_answer(result: dict, evidence: list[dict], case: dict) -> tuple[dict[str, bool], list[dict]]:
     expected_insufficient = case.get("should_be_insufficient", False)
     cited = [evidence[number - 1] for number in result["citation_numbers"]]
     answer = normalized(result["answer"])
+    aliases = case.get("answer_term_aliases", {})
     checks = {
         "insufficient": result["insufficient"] == expected_insufficient,
         "citation": not cited if expected_insufficient else any(
             source_matches(item, case["sources"]) for item in cited
         ),
-        "terms": all(normalized(term) in answer for term in case.get("answer_terms", [])),
+        "terms": all(term_matches(answer, term, aliases) for term in case.get("answer_terms", [])),
         "math": not case.get("requires_math") or "\\(" in result["answer"] or "\\[" in result["answer"],
         "control_characters": CONTROL_CHARACTERS.search(result["answer"]) is None,
     }
@@ -186,7 +191,9 @@ def main() -> None:
             "answer_terms": case.get("answer_terms", []),
             "missing_terms": [
                 term for term in case.get("answer_terms", [])
-                if not result or normalized(term) not in normalized(result["answer"])
+                if not result or not term_matches(
+                    normalized(result["answer"]), term, case.get("answer_term_aliases", {})
+                )
             ],
             "model": ai.VISION_ANSWER_MODEL() if images else ai.CHAT_MODEL(),
             "vision_used": bool(images),

@@ -35,7 +35,10 @@
     "id": "tm-005",
     "category": "rigid_body_kinematics",
     "question": "刚体上一点的加速度如何分解为基点、转动轴向和向心三部分？",
-    "sources": [{"title": "2-2 刚体运动的矢量-矩阵描述无图版", "pages": [17]}],
+    "sources": [
+      {"title": "2-2 刚体运动的矢量-矩阵描述无图版", "pages": [17]},
+      {"title": "2-3 刚体平面运动_无题版", "pages": [43]}
+    ],
     "answer_terms": ["基点", "角加速度", "向心"],
     "requires_math": true
   },
@@ -77,6 +80,10 @@
     "question": "刚体复合运动的角速度合成公式是什么？",
     "sources": [{"title": "3-2 刚体的复合运动_无图版", "pages": [3, 4]}],
     "answer_terms": ["绝对角速度", "牵连角速度", "相对角速度"],
+    "answer_term_aliases": {
+      "绝对角速度": ["总角速度"],
+      "牵连角速度": ["动参考系的角速度", "动系相对于定系的角速度"]
+    },
     "requires_math": true
   },
   {
@@ -141,6 +148,7 @@
     "question": "空间一般力系平衡的充分必要条件和六个独立平衡方程是什么？",
     "sources": [{"title": "4-4 刚体的平衡方程", "pages": [2, 3]}],
     "answer_terms": ["合力", "主矩", "六个"],
+    "answer_term_aliases": {"主矩": ["合力矩", "对任意一点的合力矩"]},
     "requires_math": true
   },
   {
@@ -227,7 +235,10 @@
     "id": "tm-029",
     "category": "virtual_work",
     "question": "理想约束如何用约束反力在任意虚位移上的虚功来定义？",
-    "sources": [{"title": "5-3 虚位移原理", "pages": [14]}],
+    "sources": [
+      {"title": "5-3 虚位移原理", "pages": [14]},
+      {"title": "5-2 虚位移", "pages": [14]}
+    ],
     "answer_terms": ["理想约束", "约束反力", "虚功"],
     "requires_math": true
   },

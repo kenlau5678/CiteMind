@@ -1,7 +1,7 @@
 import json
 import time
 
-from app.main import normalize_private_glyphs, split_page, visual_page_reason
+from app.main import _query_topics, normalize_private_glyphs, split_page, visual_page_reason
 
 
 def create_course(client):
@@ -66,6 +66,11 @@ def test_chinese_sentences_split_without_spaces():
     assert len(chunks) > 1
     assert "。\n第二句" in chunks[0]
     assert chunks[0].endswith(("。", "！", "？"))
+
+
+def test_query_topics_keep_the_course_heading_before_question_words():
+    topics = _query_topics("刚体复合运动的角加速度合成公式是什么？为什么会出现叉乘项？")
+    assert "角加速度合成" in topics
 
 
 def test_private_formula_glyphs_are_decoded_only_for_known_fonts():

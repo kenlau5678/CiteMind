@@ -21,6 +21,18 @@ def test_grounded_answer_requires_expected_page_terms_and_math():
     assert not answer_passes(result, [{"title": "Lecture", "page_number": 5}], case)
 
 
+def test_grounded_answer_accepts_declared_course_synonyms():
+    case = {
+        "sources": [{"title": "Lecture", "pages": [6]}],
+        "answer_terms": ["牵连角速度"],
+        "answer_term_aliases": {"牵连角速度": ["动参考系的角速度"]},
+    }
+    result = {
+        "answer": "动参考系的角速度见教程 [1]", "citation_numbers": [1], "insufficient": False,
+    }
+    assert answer_passes(result, [{"title": "Lecture", "page_number": 6}], case)
+
+
 def test_markdown_report_records_question_and_failure(tmp_path):
     report = tmp_path / "report.md"
     write_report(report, [{

@@ -213,8 +213,19 @@ def _cjk_bigrams(text: str) -> set[str]:
     }
 
 
+def _query_topics(query: str) -> set[str]:
+    cleaned = re.sub(r"(是什么|为什么|如何|怎么|怎样|分别|各|公式)", "|", query)
+    topics = set()
+    for segment in re.findall(r"[\u4e00-\u9fff]+", cleaned):
+        if len(segment) >= 4:
+            topics.add(segment)
+        topics.update(part for part in segment.split("的") if len(part) >= 4)
+    return topics
+
+
 def _cjk_results(db, course_id: int, query: str, document_id: int | None, limit: int):
     query_terms = _cjk_bigrams(query)
+    query_topics = _query_topics(query)
     if not query_terms:
         return []
     sql = """SELECT c.*, d.title, d.filename FROM chunks c
@@ -241,20 +252,24 @@ def _cjk_results(db, course_id: int, query: str, document_id: int | None, limit:
         overlap = len(matched)
         ratio = sum(weights[term] for term in matched) / query_weight
         if overlap >= minimum_overlap and ratio >= 0.15:
+            searchable = f"{item['title']}\n{item['content']}"
+            topic_match = max((len(topic) for topic in query_topics if topic in searchable), default=0)
             formula_match = False
             if any(marker in item["content"] for marker in ("=", "＝", "\uf03d")):
                 for match in re.finditer("公式", query):
                     prefix = re.search(r"[\u4e00-\u9fff]+$", query[:match.start()])
                     if prefix and any(
-                        prefix.group()[-length:] + "公式" in item["content"]
+                        prefix.group()[-length:] in item["content"]
                         for length in range(min(5, len(prefix.group())), 1, -1)
                     ):
                         formula_match = True
                         break
             formula_bonus = 0.35 if formula_match else 0
-            item["lexical_score"] = ratio + formula_bonus
+            topic_bonus = 0.12 * min(topic_match, 8)
+            item["lexical_score"] = ratio + formula_bonus + topic_bonus
             item["lexical_overlap"] = overlap
             item["formula_match"] = formula_match
+            item["topic_match"] = topic_match
             scored.append(item)
     scored.sort(key=lambda item: (item["lexical_score"], item["lexical_overlap"]), reverse=True)
     return scored[:limit]
@@ -293,6 +308,7 @@ def search_chunks(course_id: int, request: SearchRequest):
     for rank, item in enumerate(cjk, 1):
         current = merged.setdefault(item["id"], {**item, "score": 0, "keyword_match": False})
         current["score"] += (2 if item.get("formula_match") else 1) / (60 + rank)
+        current["score"] += min(item.get("lexical_score", 0), 1.5) / 100
         current["cjk_match"] = True
     for rank, item in enumerate(semantic, 1):
         score = ai.cosine(query_vector, json.loads(item["embedding"]))
@@ -300,8 +316,16 @@ def search_chunks(course_id: int, request: SearchRequest):
         current["score"] += 1 / (60 + rank)
         current["semantic_score"] = score
     ranked = sorted(merged.values(), key=lambda item: item["score"], reverse=True)
+    deduplicated = []
+    seen_pages = set()
+    for item in ranked:
+        page = (item["title"], item["page_number"])
+        if page in seen_pages:
+            continue
+        seen_pages.add(page)
+        deduplicated.append(item)
     safe = [
-        item for item in ranked
+        item for item in deduplicated
         if item.get("keyword_match") or item.get("cjk_match") or item.get("semantic_score", 0) >= 0.25
     ]
     for item in safe:
@@ -310,6 +334,7 @@ def search_chunks(course_id: int, request: SearchRequest):
         item.pop("lexical_score", None)
         item.pop("lexical_overlap", None)
         item.pop("formula_match", None)
+        item.pop("topic_match", None)
     return safe[: request.top_k]
 
 

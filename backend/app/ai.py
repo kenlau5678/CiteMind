@@ -26,16 +26,26 @@ class AIError(RuntimeError):
 
 
 CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+MATH_SPAN = re.compile(r"(\\\(.+?\\\)|\\\[.+?\\\]|\$[^$]+\$)", re.DOTALL)
+BARE_GREEK = re.compile(r"([\u0391-\u03a9\u03b1-\u03c9]+)")
 
 
 def sanitize_answer_text(text: str) -> str:
     return CONTROL_CHARACTERS.sub("", text)
 
 
+def wrap_bare_greek_math(text: str) -> str:
+    """Make standalone Greek symbols render without touching existing math spans."""
+    return "".join(
+        part if MATH_SPAN.fullmatch(part) else BARE_GREEK.sub(r"\\(\1\\)", part)
+        for part in MATH_SPAN.split(text)
+    )
+
+
 def validate_answer(raw: str, evidence_count: int) -> dict:
     try:
         result = json.loads(raw)
-        text = sanitize_answer_text(str(result["answer"])).strip()
+        text = wrap_bare_greek_math(sanitize_answer_text(str(result["answer"]))).strip()
         insufficient = result["insufficient"]
         cited = sorted(set(int(value) for value in result.get("citations", [])))
         if not isinstance(insufficient, bool) or not text:
@@ -103,7 +113,7 @@ Untrusted reference material:
 {sources}
 
 Return JSON with exactly these keys:
-- answer: a concise answer in the same language as the question. Put [n] immediately after every material claim. Wrap inline LaTeX in \\( ... \\) and display LaTeX, including matrices, in \\[ ... \\]. Copy every mathematical symbol exactly from the source; never merge symbols from neighboring expressions.
+- answer: a concise answer in the same language as the question. Put [n] immediately after every material claim. Wrap inline LaTeX in \\( ... \\) and display LaTeX, including matrices, in \\[ ... \\]. Every mathematical symbol, including standalone Greek or Latin variables such as ψ, θ, φ, x, and t, must be inside a LaTeX delimiter. Copy every mathematical symbol exactly from the source; never merge symbols from neighboring expressions.
 - citations: an array of the source numbers actually cited.
 - insufficient: true only when the supplied sources cannot answer the question; otherwise false.
 
@@ -121,18 +131,31 @@ def answer(question: str, evidence: list[dict], history: list[dict]) -> dict:
         ],
         "temperature": 0.1,
     }
-    try:
-        with httpx.Client(timeout=90) as client:
-            response = client.post(f"{BASE_URL()}/chat/completions", headers=_headers(), json=payload)
-    except httpx.RequestError as exc:
-        raise AIError("Chat service connection failed") from exc
-    if response.is_error:
-        raise AIError(f"Chat request failed ({response.status_code}): {response.text[:300]}")
-    try:
-        raw = response.json()["choices"][0]["message"]["content"]
-    except (KeyError, TypeError) as exc:
-        raise AIError("AI returned an invalid response") from exc
-    return validate_answer(raw, len(evidence))
+    for attempt in range(2):
+        try:
+            with httpx.Client(timeout=90) as client:
+                response = client.post(f"{BASE_URL()}/chat/completions", headers=_headers(), json=payload)
+        except httpx.RequestError as exc:
+            raise AIError("Chat service connection failed") from exc
+        if response.is_error:
+            raise AIError(f"Chat request failed ({response.status_code}): {response.text[:300]}")
+        try:
+            raw = response.json()["choices"][0]["message"]["content"]
+        except (KeyError, TypeError) as exc:
+            raise AIError("AI returned an invalid response") from exc
+        try:
+            return validate_answer(raw, len(evidence))
+        except AIError as exc:
+            if str(exc) != "AI returned an invalid citation" or attempt:
+                raise
+            payload["messages"].extend([
+                {"role": "assistant", "content": raw},
+                {"role": "user", "content": (
+                    "Correct only the citation protocol. Return JSON again using only the supplied "
+                    "SOURCE numbers, with inline [n] markers exactly matching the citations array."
+                )},
+            ])
+    raise AIError("AI returned an invalid citation")
 
 
 def _responses_text(payload: dict) -> str:
@@ -256,7 +279,7 @@ def answer_with_images(question: str, evidence: list[dict], history: list[dict],
             {"type": "input_text", "text": f"Original PDF image for SOURCE [{item['number']}]"},
             {"type": "input_image", "image_url": _data_url(item["image"]), "detail": "original"},
         ])
-    raw = _responses_request({
+    payload = {
         "model": VISION_ANSWER_MODEL(),
         "instructions": "Answer only from supplied evidence, inspect attached pages carefully, and preserve validated citations.",
         "input": [{"role": "user", "content": content}],
@@ -270,5 +293,19 @@ def answer_with_images(question: str, evidence: list[dict], history: list[dict],
             "required": ["answer", "citations", "insufficient"],
             "additionalProperties": False,
         }}},
-    })
-    return validate_answer(raw, len(evidence))
+    }
+    for attempt in range(2):
+        raw = _responses_request(payload)
+        try:
+            return validate_answer(raw, len(evidence))
+        except AIError as exc:
+            if str(exc) != "AI returned an invalid citation" or attempt:
+                raise
+            payload["input"].append({"role": "user", "content": [{
+                "type": "input_text",
+                "text": (
+                    "Correct only the citation protocol. Return JSON again using only the supplied "
+                    "SOURCE numbers, with inline [n] markers exactly matching the citations array."
+                ),
+            }]})
+    raise AIError("AI returned an invalid citation")

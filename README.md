@@ -139,7 +139,7 @@ The private theoretical-mechanics acceptance set contains 50 questions covering 
 cd backend
 .\.venv\Scripts\python evaluate_course.py
 .\.venv\Scripts\python evaluate_course.py --answers
-.\.venv\Scripts\python evaluate_course.py --answers --limit 30 --report ..\docs\evaluations\theoretical_mechanics_30.md
+.\.venv\Scripts\python evaluate_course.py --answers --limit 30 --report ..\docs\evaluations\theoretical_mechanics_30_v2.md
 ```
 
 The second command also checks grounded citations, required course terminology, math delimiters, and invalid control characters. It uses the configured AI models and therefore incurs API usage.
@@ -147,6 +147,8 @@ The second command also checks grounded citations, required course terminology, 
 Initial real-course baseline: **41/50 (82%)** top-5 source-page retrieval. The misses remain in the set as regression targets instead of being rewritten to fit the current retriever.
 
 The first 30 deterministic answer checks using `gpt-4.1-mini` without original-page vision produced **25/30 retrieval passes, 23/30 answer-rule passes, and 22/30 overall passes**. See the [detailed per-question report](docs/evaluations/theoretical_mechanics_30.md); it records expected pages, retrieved pages, cited pages, missing terms, every rule result, and the full answer.
+
+After source-page verification, course-synonym support, topic-aware page ranking, citation repair, and math-delimiter cleanup, the same 30 questions produced **30/30 retrieval passes, 30/30 answer-rule passes, and 30/30 overall passes**. See the [second-run comparison report](docs/evaluations/theoretical_mechanics_30_v2.md).
 
 See the dated [validation report](docs/VALIDATION.md) for the complete test matrix, including the measured 3.47-second warm-cache indexing time for a generated 100-page text PDF.
 
