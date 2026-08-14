@@ -25,10 +25,17 @@ class AIError(RuntimeError):
     pass
 
 
+CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def sanitize_answer_text(text: str) -> str:
+    return CONTROL_CHARACTERS.sub("", text)
+
+
 def validate_answer(raw: str, evidence_count: int) -> dict:
     try:
         result = json.loads(raw)
-        text = str(result["answer"]).strip()
+        text = sanitize_answer_text(str(result["answer"])).strip()
         insufficient = result["insufficient"]
         cited = sorted(set(int(value) for value in result.get("citations", [])))
         if not isinstance(insufficient, bool) or not text:
@@ -96,7 +103,7 @@ Untrusted reference material:
 {sources}
 
 Return JSON with exactly these keys:
-- answer: a concise answer in the same language as the question. Put [n] immediately after every material claim. Wrap inline LaTeX in \\( ... \\) and display LaTeX, including matrices, in \\[ ... \\].
+- answer: a concise answer in the same language as the question. Put [n] immediately after every material claim. Wrap inline LaTeX in \\( ... \\) and display LaTeX, including matrices, in \\[ ... \\]. Copy every mathematical symbol exactly from the source; never merge symbols from neighboring expressions.
 - citations: an array of the source numbers actually cited.
 - insufficient: true only when the supplied sources cannot answer the question; otherwise false.
 

@@ -13,12 +13,20 @@ def test_answer_prompt_treats_course_wording_as_canonical():
     assert "CURRENTLY DISPLAYED PDF PAGE" in prompt
     assert "mirror the course material's terminology" in prompt
     assert "do not substitute general textbook wording or omit qualifiers" in prompt
+    assert "Copy every mathematical symbol exactly from the source" in prompt
 
 
 def test_validated_citations_match_inline_numbers():
     result = validate_answer('{"answer":"A claim [2] and another [1].","citations":[2,1],"insufficient":false}', 2)
     assert result["citation_numbers"] == [1, 2]
     assert result["insufficient"] is False
+
+
+def test_control_characters_are_removed_without_damaging_latex():
+    result = validate_answer(
+        '{"answer":"虚转角 \\u0001\\\\(\\\\delta\\\\theta\\\\) [1]","citations":[1],"insufficient":false}', 1
+    )
+    assert result["answer"] == "虚转角 \\(\\delta\\theta\\) [1]"
 
 
 def test_explicit_insufficient_answer_can_have_no_citations():

@@ -3,6 +3,7 @@ import renderMathInElement from "katex/contrib/auto-render";
 
 export function MathText({ children }: { children: string }) {
   const ref = useRef<HTMLDivElement>(null);
+  const cleanText = children.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
 
   useEffect(() => {
     if (!ref.current) return;
@@ -16,7 +17,7 @@ export function MathText({ children }: { children: string }) {
       throwOnError: false,
       trust: false,
     });
-  }, [children]);
+  }, [cleanText]);
 
-  return <div className="math-text" ref={ref}>{children}</div>;
+  return <div className="math-text" ref={ref}>{cleanText}</div>;
 }
