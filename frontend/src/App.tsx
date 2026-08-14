@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { MathText } from "./components/MathText";
-import { PdfViewer } from "./components/PdfViewer";
+import { PdfViewer, savedPdfPage } from "./components/PdfViewer";
 import { CitationPreview } from "./components/CitationPreview";
 import type { Citation, Course, Document, Message } from "./types";
 
@@ -43,8 +43,9 @@ export default function App() {
     Promise.all([api.documents(courseId), api.messages(courseId)]).then(([docs, history]) => {
       setDocuments(docs);
       setMessages(history);
-      setActiveDocument((current) => docs.find((item) => item.id === current?.id) ?? docs[0] ?? null);
-      setPage(1);
+      const next = docs.find((item) => item.id === activeDocument?.id) ?? docs[0] ?? null;
+      setActiveDocument(next);
+      setPage(next ? savedPdfPage(next.id, next.page_count) : 1);
       setHighlight(undefined);
     }).catch(showError);
   }, [courseId]);
@@ -109,6 +110,12 @@ export default function App() {
     setActiveDocument(document);
     setPage(citation.page_number);
     setHighlight(citation.content);
+  }
+
+  function openDocument(document: Document) {
+    setActiveDocument(document);
+    setPage(savedPdfPage(document.id, document.page_count));
+    setHighlight(undefined);
   }
 
   async function removeDocument(document: Document) {
@@ -189,7 +196,7 @@ export default function App() {
                 key={document.id}
                 draggable
                 className={`${activeDocument?.id === document.id ? "source-card active" : "source-card"} ${document.status} ${draggedDocumentId === document.id ? "dragging" : ""}`}
-                onClick={() => { setActiveDocument(document); setPage(1); setHighlight(undefined); }}
+                onClick={() => openDocument(document)}
                 onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", String(document.id)); setDraggedDocumentId(document.id); }}
                 onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
                 onDrop={(event) => { event.preventDefault(); const sourceId = Number(event.dataTransfer.getData("text/plain")) || draggedDocumentId; if (sourceId) void moveDocument(sourceId, document.id); setDraggedDocumentId(null); }}
@@ -222,7 +229,7 @@ export default function App() {
 
           <div className="split-view">
             {activeDocument ? (
-              <PdfViewer documentId={activeDocument.id} title={activeDocument.title} page={page} pageCount={activeDocument.page_count} highlight={highlight} onPageChange={(next) => { setPage(next); setHighlight(undefined); }} />
+              <PdfViewer key={activeDocument.id} documentId={activeDocument.id} title={activeDocument.title} page={page} pageCount={activeDocument.page_count} highlight={highlight} onPageChange={(next) => { setPage(next); setHighlight(undefined); }} />
             ) : <section className="viewer-panel blank-panel"><span>No document open</span></section>}
 
             <section className="chat-panel">
