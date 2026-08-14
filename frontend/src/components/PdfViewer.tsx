@@ -12,7 +12,7 @@ type Props = {
   onPageChange: (page: number) => void;
 };
 
-type Zoom = "width" | "page" | number;
+type Zoom = "width" | number;
 const MIN_ZOOM = 0.4;
 const MAX_ZOOM = 3;
 const readingKey = (documentId: number) => `citemind:pdf:${documentId}`;
@@ -30,11 +30,10 @@ export function savedPdfPage(documentId: number, pageCount: number) {
 
 function savedPdfZoom(documentId: number): Zoom {
   const zoom = savedReading(documentId).zoom;
-  return zoom === "width" || zoom === "page" || (typeof zoom === "number" && zoom >= MIN_ZOOM && zoom <= MAX_ZOOM) ? zoom : "width";
+  return zoom === "width" || (typeof zoom === "number" && zoom >= MIN_ZOOM && zoom <= MAX_ZOOM) ? zoom : "width";
 }
 
 export function PdfViewer({ documentId, title, page, highlight, pageCount, onPageChange }: Props) {
-  const viewerRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -42,7 +41,6 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
   const [zoom, setZoom] = useState<Zoom>(() => savedPdfZoom(documentId));
   const [renderScale, setRenderScale] = useState(1);
   const [pageDraft, setPageDraft] = useState(String(page));
-  const [fullscreen, setFullscreen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -67,12 +65,6 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
   }, [documentId, page, zoom]);
 
   useEffect(() => {
-    const update = () => setFullscreen(document.fullscreenElement === viewerRef.current);
-    document.addEventListener("fullscreenchange", update);
-    return () => document.removeEventListener("fullscreenchange", update);
-  }, []);
-
-  useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
     container.scrollTop = 0;
@@ -91,7 +83,7 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
       const natural = pdfPage.getViewport({ scale: 1 });
       const widthScale = availableSize.width / natural.width;
       const scale = clamp(
-        zoom === "width" ? widthScale : zoom === "page" ? Math.min(widthScale, availableSize.height / natural.height) : zoom,
+        zoom === "width" ? widthScale : zoom,
         MIN_ZOOM,
         MAX_ZOOM,
       );
@@ -159,15 +151,8 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
     setZoom(clamp(Math.round((renderScale + amount) * 100) / 100, MIN_ZOOM, MAX_ZOOM));
   }
 
-  async function toggleFullscreen() {
-    try {
-      if (document.fullscreenElement) await document.exitFullscreen();
-      else await viewerRef.current?.requestFullscreen();
-    } catch { setError("Fullscreen is not available in this browser."); }
-  }
-
   return (
-    <section className="viewer-panel" ref={viewerRef}>
+    <section className="viewer-panel">
       <header className="panel-header viewer-header">
         <div>
           <span className="eyebrow">Reading</span>
@@ -183,9 +168,6 @@ export function PdfViewer({ documentId, title, page, highlight, pageCount, onPag
           <button title="Zoom out" aria-label="Zoom out" onClick={() => changeZoom(-0.15)}>−</button>
           <span className="zoom-value">{Math.round(renderScale * 100)}%</span>
           <button title="Zoom in" aria-label="Zoom in" onClick={() => changeZoom(0.15)}>+</button>
-          <button className={zoom === "width" ? "active" : ""} title="Fit page width" aria-label="Fit page width" onClick={() => setZoom("width")}>↔</button>
-          <button className={zoom === "page" ? "active" : ""} title="Fit whole page" aria-label="Fit whole page" onClick={() => setZoom("page")}>□</button>
-          <button title={fullscreen ? "Exit full screen" : "Full screen"} aria-label={fullscreen ? "Exit full screen" : "Full screen"} onClick={toggleFullscreen}>⛶</button>
         </nav>
       </header>
       <div className="pdf-scroll" ref={scrollRef}>

@@ -83,7 +83,7 @@ button { color: inherit; }
 .viewer-header strong { max-width: 130px; }
 .page-controls { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; font-size: 10px; color: var(--muted); }
 .page-controls button { border: 1px solid var(--line); background: white; width: 27px; height: 27px; border-radius: 6px; cursor: pointer; }
-.page-controls button:hover, .page-controls button.active { border-color: #779487; background: #edf3ee; color: var(--sage); }
+.page-controls button:hover { border-color: #779487; background: #edf3ee; color: var(--sage); }
 .page-controls button:disabled { opacity: .35; cursor: default; }
 .page-jump { display: flex; align-items: center; gap: 3px; white-space: nowrap; }
 .page-jump input { width: 34px; height: 27px; border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); text-align: center; font-size: 10px; padding: 0 2px; appearance: textfield; }
@@ -97,7 +97,6 @@ button { color: inherit; }
 @keyframes glow { from { background: #f4cc564a; } to { background: #f4cc56b0; } }
 .viewer-status { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 12px; }
 .blank-panel { display: grid; place-items: center; color: #8e9792; }
-.viewer-panel:fullscreen { width: 100vw; height: 100vh; border: 0; background: #e7e8e2; }
 
 .chat-panel { background: #fbfaf6; }
 .messages { flex: 1; overflow-y: auto; padding: 20px 20px 10px; }
