@@ -1,12 +1,15 @@
 # Validation report
 
-Validated on 2026-08-13 with Windows 11, Python 3.12, Node.js 24, and a Chromium-based browser.
+Validated on 2026-08-14 with Windows 11, Python 3.12, Node.js 24, and a Chromium-based browser.
 
 | Requirement | Evidence | Result |
 | --- | --- | --- |
-| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 30/30 passed |
+| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 46/46 passed |
 | Production frontend | `cd frontend; npm run build` | Passed |
-| Clean dependency install | Empty verification directories; fresh Python virtual environment and `npm ci` | 25/25 backend checks and production frontend build passed |
+| Clean source acceptance | Tracked files copied without environments, dependencies, data, or `.env`; then `start.ps1` | Fresh Python environment and dependencies installed, frontend built, no-key `.env` created, health endpoint passed, and 46/46 backend checks passed |
+| Source ordering | Real pointer drag followed by refresh and keyboard restoration | New order persisted; original order restored |
+| Citation deduplication | Legacy chat history plus merged backend evidence | Same document/page appears once per answer |
+| 30-question stability | Four fresh complete AI runs | Top-5 retrieval stayed 30/30; deterministic answer rules ranged from 25/30 to 29/30 with omissions recorded per question |
 | Page provenance | Generated two-page PDF test | Text stayed on PDF pages 1 and 2 |
 | Citation integrity | Invalid, fabricated, and mismatched citation tests | All rejected |
 | Unsupported answer integrity | Supported answer without a citation | Rejected |

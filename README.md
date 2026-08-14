@@ -16,7 +16,7 @@
 
 CiteMind is a local-first course knowledge base for lecture notes, student notes, and papers. It answers questions only from the uploaded material, attaches a page-level citation to every supported claim, and opens the exact PDF page behind each citation.
 
-> Status: working v0.1 MVP. Text and scanned PDFs with page vision, single user, Windows-first.
+> Status: working v0.1.8 MVP. Text and scanned PDFs with page vision, single user, Windows-first.
 
 ## Why CiteMind
 
@@ -26,6 +26,8 @@ Most document chat demos optimize for a fluent answer. CiteMind optimizes for a 
 - citations are server-validated and cannot name a source the retriever did not supply;
 - every citation contains the file, PDF page, and original excerpt;
 - clicking evidence opens and highlights the matching PDF page;
+- repeated chunks from the same PDF page are merged into one evidence card;
+- source cards can be dragged into a preferred reading order, which persists after refresh;
 - AI answers typeset inline and display LaTeX, including fractions and matrices;
 - known legacy `Symbol` formula glyphs are decoded for retrieval, while every citation retains an exact original-page visual preview;
 - diagram, plot, and formula questions can inspect one relevant original page with vision; page descriptions are cached after the first use;
@@ -146,15 +148,15 @@ The second command also checks grounded citations, required course terminology, 
 
 Initial real-course baseline: **41/50 (82%)** top-5 source-page retrieval. The misses remain in the set as regression targets instead of being rewritten to fit the current retriever.
 
-The first 30 deterministic answer checks using `gpt-4.1-mini` without original-page vision produced **25/30 retrieval passes, 23/30 answer-rule passes, and 22/30 overall passes**. See the [detailed per-question report](docs/evaluations/theoretical_mechanics_30.md); it records expected pages, retrieved pages, cited pages, missing terms, every rule result, and the full answer.
+The first 30 deterministic answer checks using `gpt-4.1-mini` without original-page vision produced **25/30 retrieval passes, 23/30 answer-rule passes, and 22/30 overall passes**. See the [baseline report](docs/evaluations/theoretical_mechanics_30.md); it records expected pages, retrieved pages, cited pages, missing terms, every rule result, and the full answer.
 
-After source-page verification, course-synonym support, topic-aware page ranking, citation repair, and math-delimiter cleanup, the same 30 questions produced **30/30 retrieval passes, 30/30 answer-rule passes, and 30/30 overall passes**. See the [second-run comparison report](docs/evaluations/theoretical_mechanics_30_v2.md).
+After source-page verification, course-synonym support, topic-aware page ranking, citation repair, and math-delimiter cleanup, one run produced **30/30 retrieval passes, 30/30 answer-rule passes, and 30/30 overall passes**. See the [second-run comparison report](docs/evaluations/theoretical_mechanics_30_v2.md). Four fresh v0.1.8 runs all kept **30/30 retrieval** while answer-rule results ranged from **25/30 to 29/30**; see the [stability report and failure analysis](docs/evaluations/theoretical_mechanics_30_stability.md).
 
 See the dated [validation report](docs/VALIDATION.md) for the complete test matrix, including the measured 3.47-second warm-cache indexing time for a generated 100-page text PDF.
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
-The current engineering candidate is documented in the [v0.1.7 release notes](docs/RELEASE_NOTES_v0.1.7.md). Seven private tutorials (222 pages) are indexed together and the formula-evidence path has been rechecked, but CiteMind is not represented as v1.0 until a clean AI comparison session and the required lecture/notes/paper source mix pass.
+The current engineering candidate is documented in the [v0.1.8 release notes](docs/RELEASE_NOTES_v0.1.8.md). The full mechanics course and formula-evidence path have been rechecked, but CiteMind is not represented as v1.0 until the required lecture/notes/paper source mix passes.
 
 ## Repository map
 

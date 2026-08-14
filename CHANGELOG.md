@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 0.1.8 - 2026-08-14
+
+### Added
+
+- Let users drag source cards into a persistent reading order, with a visible insertion preview and keyboard fallback.
+
+### Fixed
+
+- Merge retrieved chunks from the same document page into one evidence item and one citation card.
+- Keep pointer dragging active after the cursor leaves the small drag handle.
+- Require formula answers to name requested physical quantities and define variables with course terminology.
+
+### Validated
+
+- 46 focused backend checks and a production frontend build.
+- Real browser drag, refresh persistence, keyboard restoration, and legacy citation-card deduplication.
+- A clean tracked-file copy installed, built, started without an AI key, passed its health check, and passed 46 backend checks.
+- Four fresh 30-question AI runs kept Top-5 retrieval at 30/30; answer-rule results ranged from 25/30 to 29/30, with every failure retained in detailed reports.
+
 ### Added
 
 - Decode additional font-gated legacy `Symbol` operators used in mechanics PDFs, including inequalities, sums, integrals, dot products, angles, derivatives, and degrees.

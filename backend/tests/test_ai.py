@@ -15,6 +15,7 @@ def test_answer_prompt_treats_course_wording_as_canonical():
     )
     assert "CURRENTLY DISPLAYED PDF PAGE" in prompt
     assert "mirror the course material's terminology" in prompt
+    assert "define every variable in words" in prompt
     assert "do not substitute general textbook wording or omit qualifiers" in prompt
     assert "Copy every mathematical symbol exactly from the source" in prompt
 
