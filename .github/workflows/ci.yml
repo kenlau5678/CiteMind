@@ -15,7 +15,7 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
       - run: pip install -r backend/requirements.txt
-      - run: pytest -q
+      - run: python -m pytest -q
         working-directory: backend
       - uses: actions/setup-node@v4
         with:
@@ -26,4 +26,3 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
-
