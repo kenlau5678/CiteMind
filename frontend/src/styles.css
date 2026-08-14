@@ -107,7 +107,7 @@ button { color: inherit; }
 .chat-empty h2 { font-family: "Newsreader", serif; color: var(--ink); margin: 10px 0 4px; font-size: 24px; }
 .chat-empty p { max-width: 310px; margin: 0; font-size: 12px; line-height: 1.6; }
 .message { max-width: 92%; margin-bottom: 22px; }
-.message.user { margin-left: auto; background: #e7ece7; padding: 10px 13px; border-radius: 12px 12px 2px 12px; }
+.message.user { width: fit-content; margin-left: auto; background: #e7ece7; padding: 10px 13px; border-radius: 12px 12px 2px 12px; }
 .message .role { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: #8c9690; margin-bottom: 5px; }
 .message p, .math-text { margin: 0; font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
 .math-text .katex-display { margin: .75em 0; overflow-x: auto; overflow-y: hidden; }

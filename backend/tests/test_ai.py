@@ -1,7 +1,17 @@
 import pytest
 import httpx
 
-from app.ai import AIError, answer, validate_answer
+from app.ai import AIError, _answer_prompt, answer, validate_answer
+
+
+def test_answer_prompt_treats_course_wording_as_canonical():
+    prompt = _answer_prompt(
+        "解释牛顿第三定律",
+        [{"title": "质点动力学", "page_number": 6, "content": "牛顿第三定律（相互作用公理）"}],
+        [],
+    )
+    assert "mirror the course material's terminology" in prompt
+    assert "do not substitute general textbook wording or omit qualifiers" in prompt
 
 
 def test_validated_citations_match_inline_numbers():
