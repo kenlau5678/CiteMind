@@ -48,7 +48,12 @@ button { color: inherit; }
 .workspace-header { height: 91px; display: flex; align-items: center; justify-content: space-between; }
 .workspace-header h1 { font-family: "Newsreader", serif; font-size: 30px; margin: 2px 0 0; font-weight: 600; }
 .eyebrow { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .13em; color: #8a928d; font-weight: 700; }
-.source-strip { display: flex; flex: 0 0 93px; gap: 10px; padding-bottom: 13px; overflow-x: auto; }
+.source-strip { display: flex; flex: 0 0 99px; gap: 10px; padding-bottom: 13px; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: #789487 transparent; }
+.source-strip::-webkit-scrollbar { height: 6px; }
+.source-strip::-webkit-scrollbar-track { background: transparent; }
+.source-strip::-webkit-scrollbar-thumb { background: #789487; border-radius: 999px; }
+.source-strip::-webkit-scrollbar-thumb:hover { background: #527261; }
+.source-strip::-webkit-scrollbar-button { display: none; }
 .source-card { position: relative; flex: 0 0 190px; height: 80px; align-self: flex-start; background: #faf9f4; border: 1px solid var(--line); border-radius: 10px; padding: 12px; cursor: grab; box-shadow: 0 2px 7px #41504708; }
 .source-card:hover, .source-card.active { border-color: #779487; box-shadow: 0 3px 10px #41504713; }
 .source-card.dragging { opacity: .24; cursor: grabbing; }
