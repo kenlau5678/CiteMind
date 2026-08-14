@@ -1,0 +1,405 @@
+[
+  {
+    "id": "tm-001",
+    "category": "point_kinematics",
+    "question": "点沿曲线运动时，加速度如何分解为切向和法向分量？两者各反映什么？",
+    "sources": [{"title": "第1章 点的运动学_无图版", "pages": [27]}],
+    "answer_terms": ["切向加速度", "法向加速度", "曲率中心"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-002",
+    "category": "point_kinematics",
+    "question": "曲线上一点的曲率和曲率半径如何定义？",
+    "sources": [{"title": "第1章 点的运动学_无图版", "pages": [28]}],
+    "answer_terms": ["曲率", "曲率半径"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-003",
+    "category": "rigid_body_kinematics",
+    "question": "刚体作一般运动时，任一点速度与基点速度、角速度有什么关系？",
+    "sources": [{"title": "2-2 刚体运动的矢量-矩阵描述无图版", "pages": [10, 13]}],
+    "answer_terms": ["基点", "角速度"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-004",
+    "category": "rigid_body_kinematics",
+    "question": "刚体速度投影定理的内容和数学表达式是什么？",
+    "sources": [{"title": "2-2 刚体运动的矢量-矩阵描述无图版", "pages": [15, 16]}],
+    "answer_terms": ["连线", "投影相等"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-005",
+    "category": "rigid_body_kinematics",
+    "question": "刚体上一点的加速度如何分解为基点、转动轴向和向心三部分？",
+    "sources": [{"title": "2-2 刚体运动的矢量-矩阵描述无图版", "pages": [17]}],
+    "answer_terms": ["基点", "角加速度", "向心"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-006",
+    "category": "planar_motion",
+    "question": "刚体平面运动中用基点法求另一点速度的基本公式是什么？",
+    "sources": [{"title": "2-3 刚体平面运动_无题版", "pages": [4]}],
+    "answer_terms": ["基点", "角速度"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-007",
+    "category": "planar_motion",
+    "question": "什么是刚体平面运动的瞬时速度中心？它是否唯一？",
+    "sources": [{"title": "2-3 刚体平面运动_无题版", "pages": [13]}],
+    "answer_terms": ["瞬时速度中心", "速度为零", "唯一"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-008",
+    "category": "compound_point_motion",
+    "question": "点的复合运动中，绝对运动、相对运动和牵连运动分别指什么？",
+    "sources": [{"title": "3-1 点的复合运动_无图版", "pages": [3, 4]}],
+    "answer_terms": ["绝对运动", "相对运动", "牵连运动"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-009",
+    "category": "compound_point_motion",
+    "question": "科氏加速度的公式和物理意义是什么？",
+    "sources": [{"title": "3-1 点的复合运动_无图版", "pages": [32, 33]}],
+    "answer_terms": ["科氏加速度", "牵连运动", "相对速度"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-010",
+    "category": "compound_rigid_motion",
+    "question": "刚体复合运动的角速度合成公式是什么？",
+    "sources": [{"title": "3-2 刚体的复合运动_无图版", "pages": [3, 4]}],
+    "answer_terms": ["绝对角速度", "牵连角速度", "相对角速度"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-011",
+    "category": "compound_rigid_motion",
+    "question": "刚体复合运动的角加速度合成公式是什么？为什么会出现叉乘项？",
+    "sources": [{"title": "3-2 刚体的复合运动_无图版", "pages": [12]}],
+    "answer_terms": ["角加速度", "牵连", "相对"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-012",
+    "category": "fixed_point_motion",
+    "question": "刚体作定点运动时，任一点的速度和加速度公式是什么？",
+    "sources": [{"title": "2-4 刚体的定点运动——无图版", "pages": [2]}],
+    "answer_terms": ["定点运动", "角速度", "角加速度"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-013",
+    "category": "fixed_point_motion",
+    "question": "欧拉定理如何描述刚体绕定点的有限转动？",
+    "sources": [{"title": "2-4 刚体的定点运动——无图版", "pages": [4]}],
+    "answer_terms": ["欧拉定理", "一次", "有限转动"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-014",
+    "category": "fixed_point_motion",
+    "question": "定点运动的瞬时转动轴如何确定？轴上各点速度有什么特点？",
+    "sources": [{"title": "2-4 刚体的定点运动——无图版", "pages": [6, 7]}],
+    "answer_terms": ["瞬时转动轴", "速度为零"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-015",
+    "category": "fixed_point_motion",
+    "question": "欧拉角中的进动角、章动角和自转角分别是哪三个角？",
+    "sources": [{"title": "2-4 刚体的定点运动——无图版", "pages": [23]}],
+    "answer_terms": ["进动角", "章动角", "自转角"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-016",
+    "category": "force_analysis",
+    "question": "受力分析中主动力和约束力如何区分？",
+    "sources": [{"title": "4-3 受力分析", "pages": [2]}],
+    "answer_terms": ["主动力", "约束力", "被动力"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-017",
+    "category": "force_analysis",
+    "question": "刚体二力平衡和三力平衡汇交的条件分别是什么？",
+    "sources": [{"title": "4-3 受力分析", "pages": [11]}],
+    "answer_terms": ["大小相等", "方向相反", "同一直线", "汇交"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-018",
+    "category": "rigid_body_equilibrium",
+    "question": "空间一般力系平衡的充分必要条件和六个独立平衡方程是什么？",
+    "sources": [{"title": "4-4 刚体的平衡方程", "pages": [2, 3]}],
+    "answer_terms": ["合力", "主矩", "六个"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-019",
+    "category": "rigid_body_equilibrium",
+    "question": "平面力系平衡方程的一矩式、二矩式和三矩式分别怎样写？",
+    "sources": [{"title": "4-4 刚体的平衡方程", "pages": [4]}],
+    "answer_terms": ["一矩式", "二矩式", "三矩式"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-020",
+    "category": "rigid_body_equilibrium",
+    "question": "静定问题和静不定问题如何按未知数与平衡方程数判断？",
+    "sources": [{"title": "4-4 刚体的平衡方程", "pages": [20, 21]}],
+    "answer_terms": ["静定", "静不定", "变形条件"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-021",
+    "category": "rigid_system_equilibrium",
+    "question": "求解刚体系平衡问题时，整体和局部研究对象应如何选择？",
+    "sources": [{"title": "4-6 刚体系的平衡", "pages": [15]}],
+    "answer_terms": ["整体", "局部", "平衡方程"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-022",
+    "category": "trusses",
+    "question": "平面桁架的节点法和截面法各适合求什么？",
+    "sources": [{"title": "4-6 刚体系的平衡", "pages": [19]}],
+    "answer_terms": ["节点法", "截面法"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-023",
+    "category": "friction",
+    "question": "什么是摩擦角和摩擦锥？它们与摩擦系数有什么关系？",
+    "sources": [{"title": "4-5 考虑摩擦的平衡问题", "pages": [4]}],
+    "answer_terms": ["摩擦角", "摩擦锥", "摩擦系数"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-024",
+    "category": "friction",
+    "question": "什么是摩擦自锁？主动力合力作用线必须满足什么条件？",
+    "sources": [{"title": "4-5 考虑摩擦的平衡问题", "pages": [10]}],
+    "answer_terms": ["自锁", "摩擦锥", "主动力"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-025",
+    "category": "friction",
+    "question": "最大滚动摩阻力偶与正压力是什么关系？滚动摩阻系数如何出现？",
+    "sources": [{"title": "4-5 考虑摩擦的平衡问题", "pages": [24]}],
+    "answer_terms": ["滚动摩阻力偶", "正压力", "滚动摩阻系数"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-026",
+    "category": "constraints",
+    "question": "什么是约束和约束方程？单面约束与双面约束怎样区分？",
+    "sources": [{"title": "5-1 约束及其分类", "pages": [3, 5]}],
+    "answer_terms": ["约束方程", "单面约束", "双面约束"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-027",
+    "category": "constraints",
+    "question": "完整约束和非完整约束的区别是什么？可积性有什么作用？",
+    "sources": [{"title": "5-1 约束及其分类", "pages": [7]}],
+    "answer_terms": ["完整约束", "非完整约束", "可积"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-028",
+    "category": "virtual_work",
+    "question": "虚位移原理的内容、适用条件和数学表达式是什么？",
+    "sources": [{"title": "5-3 虚位移原理", "pages": [2]}],
+    "answer_terms": ["理想约束", "虚位移", "虚功"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-029",
+    "category": "virtual_work",
+    "question": "理想约束如何用约束反力在任意虚位移上的虚功来定义？",
+    "sources": [{"title": "5-3 虚位移原理", "pages": [14]}],
+    "answer_terms": ["理想约束", "约束反力", "虚功"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-030",
+    "category": "generalized_coordinates",
+    "question": "自由度和广义坐标分别是什么？完整约束系统中两者数量有何关系？",
+    "sources": [{"title": "5-4 广义坐标与广义力", "pages": [2]}],
+    "answer_terms": ["自由度", "广义坐标", "独立"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-031",
+    "category": "generalized_forces",
+    "question": "广义力如何由虚功和广义坐标计算？它一定具有力的量纲吗？",
+    "sources": [{"title": "5-4 广义坐标与广义力", "pages": [3, 4]}],
+    "answer_terms": ["广义力", "虚功", "功的量纲"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-032",
+    "category": "worked_example",
+    "question": "例5-4-1中取θ为广义坐标时，如何由虚功方程推出P与N的平衡条件？",
+    "sources": [{"title": "5-4 广义坐标与广义力", "pages": [6]}],
+    "answer_terms": ["虚转角", "虚功", "平衡条件"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-033",
+    "category": "potential_energy",
+    "question": "有势主动力与系统势能函数之间是什么关系？",
+    "sources": [{"title": "5-5 势场中的平衡方程", "pages": [2]}],
+    "answer_terms": ["势能", "主动力", "负"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-034",
+    "category": "potential_energy",
+    "question": "怎样用势能极值判断完整保守系统平衡位置的稳定性？",
+    "sources": [{"title": "5-5 势场中的平衡方程", "pages": [4]}],
+    "answer_terms": ["极小值", "稳定平衡"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-035",
+    "category": "particle_dynamics",
+    "question": "教程如何表述牛顿三条基本公理？",
+    "sources": [{"title": "第6章 质点动力学", "pages": [4, 5, 6, 7]}],
+    "answer_terms": ["惯性公理", "动力学基本公理", "相互作用公理"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-036",
+    "category": "relative_dynamics",
+    "question": "在非惯性坐标系中怎样写质点相对运动微分方程？需要引入哪些惯性力？",
+    "sources": [{"title": "第6章 质点动力学", "pages": [15, 16]}],
+    "answer_terms": ["非惯性", "牵连惯性力", "科氏惯性力"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-037",
+    "category": "momentum",
+    "question": "质点系动量定理的矢量形式是什么？内力为什么不出现在最终方程中？",
+    "sources": [{"title": "7-1 质点系动量定理", "pages": [4]}],
+    "answer_terms": ["质系动量定理", "外力", "内力"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-038",
+    "category": "momentum",
+    "question": "质心运动定理的内容是什么？内力能否改变质心运动？",
+    "sources": [{"title": "7-1 质点系动量定理", "pages": [6]}],
+    "answer_terms": ["质心运动定理", "内力", "质心"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-039",
+    "category": "angular_momentum",
+    "question": "质点系对固定点的动量矩定理如何表述？",
+    "sources": [{"title": "7-2 质点系的动量矩定理", "pages": [7]}],
+    "answer_terms": ["固定点", "外力系", "主矩"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-040",
+    "category": "kinetic_energy",
+    "question": "柯尼希定理如何把质点系动能分解为质心平动和相对质心运动两部分？",
+    "sources": [{"title": "7-3 质点系动能定理", "pages": [3, 4]}],
+    "answer_terms": ["柯尼希定理", "质心", "相对"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-041",
+    "category": "kinetic_energy",
+    "question": "质点系动能定理的微分形式和积分形式分别是什么？",
+    "sources": [{"title": "7-3 质点系动能定理", "pages": [7]}],
+    "answer_terms": ["动能定理", "元功", "积分形式"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-042",
+    "category": "impact",
+    "question": "碰撞过程有哪些基本特征和基本假设？",
+    "sources": [{"title": "7-5 碰撞", "pages": [2, 5]}],
+    "answer_terms": ["瞬时性", "机械能", "局部变形"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-043",
+    "category": "impact",
+    "question": "恢复系数如何用压缩冲量和恢复冲量定义？它表示什么？",
+    "sources": [{"title": "7-5 碰撞", "pages": [3]}],
+    "answer_terms": ["恢复系数", "压缩冲量", "恢复冲量"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-044",
+    "category": "analytical_dynamics",
+    "question": "达朗贝尔－拉格朗日原理的适用条件和动力学普遍方程是什么？",
+    "sources": [{"title": "8-2 达朗贝尔－拉格朗日原理", "pages": [2]}],
+    "answer_terms": ["理想", "双面约束", "真实运动"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-045",
+    "category": "lagrange_equations",
+    "question": "第二类拉格朗日方程的标准形式是什么？它的方程数与自由度有什么关系？",
+    "sources": [{"title": "8-3 第二类拉格朗日方程 (1)", "pages": [6, 7]}],
+    "answer_terms": ["第二类拉格朗日方程", "广义力", "自由度"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-046",
+    "category": "first_integrals",
+    "question": "广义能量积分和循环积分各在什么条件下成立？",
+    "sources": [{"title": "8-4 拉格朗日方程的第一积分.pptx", "pages": [5, 6]}],
+    "answer_terms": ["广义能量积分", "循环积分", "拉格朗日函数"],
+    "requires_math": true
+  },
+  {
+    "id": "tm-047",
+    "category": "method_selection",
+    "question": "质点系普遍定理中，什么时候优先用动量方法，什么时候优先用能量方法？",
+    "sources": [{"title": "7-4 质点系普遍定理的综合应用", "pages": [2]}],
+    "answer_terms": ["动量方法", "能量方法", "约束力"],
+    "requires_math": false
+  },
+  {
+    "id": "tm-048",
+    "category": "insufficient_evidence",
+    "question": "这些教程是否讲解了卷积神经网络的反向传播公式？",
+    "sources": [],
+    "answer_terms": [],
+    "requires_math": false,
+    "should_be_insufficient": true
+  },
+  {
+    "id": "tm-049",
+    "category": "insufficient_evidence",
+    "question": "根据这些课程资料，今天台北的天气和降雨概率是多少？",
+    "sources": [],
+    "answer_terms": [],
+    "requires_math": false,
+    "should_be_insufficient": true
+  },
+  {
+    "id": "tm-050",
+    "category": "insufficient_evidence",
+    "question": "这些教程是否提供了任课教师的手机号码和电子邮箱？",
+    "sources": [],
+    "answer_terms": [],
+    "requires_math": false,
+    "should_be_insufficient": true
+  }
+]

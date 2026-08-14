@@ -133,6 +133,18 @@ backend\.venv\Scripts\python backend\evaluate.py --local
 
 Current bundled benchmark: **30/30 English and Chinese questions (100%)** retrieve the annotated page in the top five, against an 80% release threshold. Both language sets are searched together in one course. Displayed citation identifiers are server-validated; fabricated or mismatched identifiers fail closed.
 
+The private theoretical-mechanics acceptance set contains 50 questions covering formulas, definitions, worked examples, citations, and insufficient-evidence behavior. Its default run is local and checks top-5 source-page retrieval without calling an AI model:
+
+```powershell
+cd backend
+.\.venv\Scripts\python evaluate_course.py
+.\.venv\Scripts\python evaluate_course.py --answers
+```
+
+The second command also checks grounded citations, required course terminology, math delimiters, and invalid control characters. It uses the configured AI models and therefore incurs API usage.
+
+Initial real-course baseline: **41/50 (82%)** top-5 source-page retrieval. The misses remain in the set as regression targets instead of being rewritten to fit the current retriever.
+
 See the dated [validation report](docs/VALIDATION.md) for the complete test matrix, including the measured 3.47-second warm-cache indexing time for a generated 100-page text PDF.
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
