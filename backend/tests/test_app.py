@@ -147,6 +147,38 @@ def test_visual_analysis_is_cached_and_marks_its_citation(client, monkeypatch):
     assert cached["model"] == main.ai.VISION_INDEX_MODEL()
 
 
+def test_current_page_reference_pins_and_sends_the_displayed_page(client, sample_pdf, monkeypatch):
+    http, main, db_module = client
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    course_id = create_course(http)
+    document = upload(http, course_id, sample_pdf)
+    with db_module.connect() as db:
+        unrelated = dict(db.execute(
+            """SELECT c.*,d.title,d.filename FROM chunks c JOIN documents d ON d.id=c.document_id
+               WHERE c.document_id=? AND c.page_number=1""",
+            (document["id"],),
+        ).fetchone())
+    captured = {}
+    monkeypatch.setattr(main, "search_chunks", lambda *_: [unrelated])
+    monkeypatch.setattr(main.ai, "describe_page", lambda *_: '{"summary":"Displayed example","confidence":0.9}')
+    monkeypatch.setattr(main.ai, "answer_with_images", lambda _q, evidence, _h, images: captured.update(
+        evidence=evidence, images=images,
+    ) or {"answer": "This page is explained here [1].", "citation_numbers": [1], "insufficient": False})
+
+    response = http.post(f"/api/courses/{course_id}/ask", json={
+        "query": "Explain this page",
+        "context_document_id": document["id"],
+        "context_page_number": 2,
+    })
+
+    assert response.status_code == 200, response.text
+    assert captured["evidence"][0]["page_number"] == 2
+    assert captured["evidence"][0]["current_page"] is True
+    assert captured["images"][0]["number"] == 1
+    assert response.json()["citations"][0]["page_number"] == 2
+    assert response.json()["citations"][0]["visual"] is True
+
+
 def test_visual_failure_falls_back_to_text_answer(client, monkeypatch):
     http, main, _ = client
     monkeypatch.setenv("OPENAI_API_KEY", "test-only")

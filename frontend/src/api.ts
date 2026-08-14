@@ -35,10 +35,10 @@ export const api = {
   deleteDocument: (id: number) => request<void>(`/api/documents/${id}`, { method: "DELETE" }),
   messages: (courseId: number) => request<Message[]>(`/api/courses/${courseId}/messages`),
   clearMessages: (courseId: number) => request<void>(`/api/courses/${courseId}/messages`, { method: "DELETE" }),
-  ask: (courseId: number, query: string, documentId: number | null) =>
+  ask: (courseId: number, query: string, documentId: number | null, contextDocumentId: number | null, contextPageNumber: number | null) =>
     request<{ answer: string; citations: Message["citations"]; insufficient: boolean; vision_used: boolean }>(`/api/courses/${courseId}/ask`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, document_id: documentId }),
+      body: JSON.stringify({ query, document_id: documentId, context_document_id: contextDocumentId, context_page_number: contextPageNumber }),
     }),
 };

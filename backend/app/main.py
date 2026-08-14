@@ -88,9 +88,20 @@ def scan_page_needs_ocr(page: fitz.Page, text: str) -> bool:
     return visible_characters < 32 and bool(page.get_images(full=True))
 
 
+PAGE_REFERENCE_TERMS = (
+    "这页", "这一页", "本页", "当前页", "这道题", "这道例题", "此题", "图中", "上图",
+    "this page", "this example", "this problem", "the figure above",
+)
+
+
+def question_references_current_page(question: str) -> bool:
+    lowered = question.lower()
+    return any(term in lowered for term in PAGE_REFERENCE_TERMS)
+
+
 def question_requests_vision(question: str) -> bool:
     lowered = question.lower()
-    return any(term in lowered for term in (
+    return question_references_current_page(question) or any(term in lowered for term in (
         "图", "曲线", "坐标", "箭头", "受力", "机构", "公式", "方程", "矩阵",
         "diagram", "figure", "chart", "image", "graph", "formula", "equation", "matrix",
     ))
@@ -126,7 +137,8 @@ class SearchRequest(BaseModel):
 
 
 class AskRequest(SearchRequest):
-    pass
+    context_document_id: int | None = None
+    context_page_number: int | None = Field(default=None, ge=1)
 
 
 def require_course(course_id: int):
@@ -603,7 +615,30 @@ def clear_messages(course_id: int):
         db.execute("DELETE FROM messages WHERE course_id=?", (course_id,))
 
 
-def prepare_visual_evidence(question: str, evidence: list[dict]) -> tuple[list[dict], list[dict]]:
+def current_page_evidence(course_id: int, document_id: int, page_number: int) -> list[dict]:
+    with connect() as db:
+        document = db.execute(
+            "SELECT page_count,status FROM documents WHERE id=? AND course_id=?",
+            (document_id, course_id),
+        ).fetchone()
+        if not document or document["status"] != "ready" or page_number > document["page_count"]:
+            raise HTTPException(422, "The current PDF page is not available")
+        evidence = rows(db.execute(
+            """SELECT c.*,d.title,d.filename FROM chunks c JOIN documents d ON d.id=c.document_id
+               WHERE c.document_id=? AND c.page_number=? ORDER BY c.id""",
+            (document_id, page_number),
+        ).fetchall())
+    if not evidence:
+        raise HTTPException(422, "The current PDF page has no readable evidence")
+    for item in evidence:
+        item.pop("embedding", None)
+        item["current_page"] = True
+    return evidence
+
+
+def prepare_visual_evidence(
+    question: str, evidence: list[dict], forced_page: tuple[int, int] | None = None,
+) -> tuple[list[dict], list[dict]]:
     if not ai.API_KEY() or not question_requests_vision(question) or ai.VISION_MAX_PAGES() == 0:
         return evidence, []
     enriched = [dict(item) for item in evidence]
@@ -625,6 +660,8 @@ def prepare_visual_evidence(question: str, evidence: list[dict]) -> tuple[list[d
         with fitz.open(FILES_DIR / document["stored_name"]) as pdf:
             page = pdf.load_page(item["page_number"] - 1)
             reason = cached["reason"] if cached else visual_page_reason(page, extract_page_text(page))
+            if not reason and key == forced_page:
+                reason = "current_page"
             if not reason:
                 continue
             image = page.get_pixmap(matrix=fitz.Matrix(2, 2), alpha=False).tobytes("png")
@@ -656,14 +693,26 @@ def prepare_visual_evidence(question: str, evidence: list[dict]) -> tuple[list[d
 
 @app.post("/api/courses/{course_id}/ask")
 def ask(course_id: int, body: AskRequest):
-    evidence = add_neighbor_context(search_chunks(course_id, body))
+    evidence = search_chunks(course_id, body)
+    forced_page = None
+    if (
+        question_references_current_page(body.query)
+        and body.context_document_id is not None
+        and body.context_page_number is not None
+        and (body.document_id is None or body.document_id == body.context_document_id)
+    ):
+        pinned = current_page_evidence(course_id, body.context_document_id, body.context_page_number)
+        pinned_ids = {item["id"] for item in pinned}
+        evidence = pinned + [item for item in evidence if item["id"] not in pinned_ids]
+        forced_page = (body.context_document_id, body.context_page_number)
+    evidence = add_neighbor_context(evidence)
     if not evidence:
         raise HTTPException(422, "No reliable evidence was found in this course")
     with connect() as db:
         history = rows(db.execute(
             "SELECT role,content FROM messages WHERE course_id=? ORDER BY id DESC LIMIT 4", (course_id,)
         ).fetchall())[::-1]
-    visual_evidence, images = prepare_visual_evidence(body.query, evidence)
+    visual_evidence, images = prepare_visual_evidence(body.query, evidence, forced_page)
     vision_used = False
     try:
         if images:

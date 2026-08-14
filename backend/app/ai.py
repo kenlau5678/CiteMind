@@ -80,7 +80,8 @@ def cosine(a: list[float], b: list[float]) -> float:
 def _answer_prompt(question: str, evidence: list[dict], history: list[dict]) -> str:
     sources = "\n\n".join(
         f"SOURCE [{index}]\nFile: {item['title']}\nPDF page: {item['page_number']}\n"
-        f"Text: {item['content']}"
+        + ("Viewer context: CURRENTLY DISPLAYED PDF PAGE\n" if item.get("current_page") else "")
+        + f"Text: {item['content']}"
         + (f"\nCached visual analysis (AI-generated; verify against the attached original page): "
            f"{item['visual_description']}" if item.get("visual_description") else "")
         for index, item in enumerate(evidence, 1)

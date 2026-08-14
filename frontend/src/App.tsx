@@ -96,7 +96,8 @@ export default function App() {
     setMessages((current) => [...current, { role: "user", content: text, citations: [] }]);
     setBusy(true);
     try {
-      const result = await api.ask(courseId, text, scopeDocumentId);
+      const contextDocument = activeDocument?.status === "ready" ? activeDocument : null;
+      const result = await api.ask(courseId, text, scopeDocumentId, contextDocument?.id ?? null, contextDocument ? page : null);
       setMessages((current) => [...current, { role: "assistant", content: result.answer, citations: result.citations, vision_used: result.vision_used }]);
     } catch (reason) {
       setMessages((current) => current.slice(0, -1));
