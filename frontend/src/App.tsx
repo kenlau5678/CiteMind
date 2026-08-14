@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, Fragment, useEffect, useRef, useState } from "react";
 import { api } from "./api";
 import { MathText } from "./components/MathText";
 import { PdfViewer, savedPdfPage } from "./components/PdfViewer";
@@ -21,6 +21,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [draggedDocumentId, setDraggedDocumentId] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [aiConfigured, setAiConfigured] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -140,14 +141,15 @@ export default function App() {
     } catch (reason) { showError(reason); }
   }
 
-  async function moveDocument(documentId: number, targetId: number) {
-    if (!courseId || documentId === targetId) return;
+  async function moveDocumentTo(documentId: number, targetIndex: number) {
+    if (!courseId) return;
     const previous = documents;
     const from = previous.findIndex((item) => item.id === documentId);
-    const to = previous.findIndex((item) => item.id === targetId);
-    if (from < 0 || to < 0) return;
+    if (from < 0) return;
     const next = [...previous];
     const [moved] = next.splice(from, 1);
+    const to = Math.min(Math.max(targetIndex - (from < targetIndex ? 1 : 0), 0), next.length);
+    if (to === from) return;
     next.splice(to, 0, moved);
     setDocuments(next);
     try {
@@ -156,6 +158,13 @@ export default function App() {
       setDocuments(previous);
       showError(reason);
     }
+  }
+
+  function moveDocument(documentId: number, targetId: number) {
+    const from = documents.findIndex((item) => item.id === documentId);
+    const target = documents.findIndex((item) => item.id === targetId);
+    if (from < 0 || target < 0) return;
+    void moveDocumentTo(documentId, target + (target > from ? 1 : 0));
   }
 
   return (
@@ -190,17 +199,32 @@ export default function App() {
             <button className="primary" onClick={() => setShowUpload(true)}>＋ Add PDF</button>
           </header>
 
-          <div className="source-strip">
-            {documents.map((document) => (
+          <div
+            className="source-strip"
+            onDragOver={(event) => { if (draggedDocumentId !== null) event.preventDefault(); }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const sourceId = Number(event.dataTransfer.getData("text/plain")) || draggedDocumentId;
+              if (sourceId && dropIndex !== null) void moveDocumentTo(sourceId, dropIndex);
+              setDraggedDocumentId(null);
+              setDropIndex(null);
+            }}
+          >
+            {documents.map((document, index) => (
+              <Fragment key={document.id}>
+              {draggedDocumentId !== null && dropIndex === index && <article className="source-card drop-placeholder" aria-hidden="true"><span>Move here</span></article>}
               <article
-                key={document.id}
                 draggable
                 className={`${activeDocument?.id === document.id ? "source-card active" : "source-card"} ${document.status} ${draggedDocumentId === document.id ? "dragging" : ""}`}
                 onClick={() => openDocument(document)}
-                onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", String(document.id)); setDraggedDocumentId(document.id); }}
-                onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
-                onDrop={(event) => { event.preventDefault(); const sourceId = Number(event.dataTransfer.getData("text/plain")) || draggedDocumentId; if (sourceId) void moveDocument(sourceId, document.id); setDraggedDocumentId(null); }}
-                onDragEnd={() => setDraggedDocumentId(null)}
+                onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", String(document.id)); setDraggedDocumentId(document.id); setDropIndex(index); }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  setDropIndex(index + (event.clientX > bounds.left + bounds.width / 2 ? 1 : 0));
+                }}
+                onDragEnd={() => { setDraggedDocumentId(null); setDropIndex(null); }}
               >
                 <span className={`kind ${document.kind}`}>{kindNames[document.kind]}</span>
                 <button
@@ -221,7 +245,9 @@ export default function App() {
                 {document.status === "failed" && <button className="retry-document" aria-label={`Retry ${document.title}`} onClick={(event) => { event.stopPropagation(); retryDocument(document); }}>Retry</button>}
                 <button className="quiet-delete" disabled={document.status === "processing"} aria-label={`Delete ${document.title}`} onClick={(event) => { event.stopPropagation(); removeDocument(document); }}>×</button>
               </article>
+              </Fragment>
             ))}
+            {draggedDocumentId !== null && dropIndex === documents.length && <article className="source-card drop-placeholder" aria-hidden="true"><span>Move here</span></article>}
             {!documents.length && <button className="empty-source" onClick={() => setShowUpload(true)}>Drop in a PDF to start your library →</button>}
           </div>
 
