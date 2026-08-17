@@ -1,4 +1,4 @@
-import type { Course, Document, Message } from "./types";
+import type { AgentResult, Course, Document, Message } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options);
@@ -41,4 +41,9 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, document_id: documentId, context_document_id: contextDocumentId, context_page_number: contextPageNumber }),
     }),
+  explore: (query: string) => request<AgentResult>("/api/agent/explore", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+  }),
 };

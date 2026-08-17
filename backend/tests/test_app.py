@@ -540,3 +540,92 @@ def test_formula_query_prefers_page_with_an_explicit_equation(client):
     )
     assert response.status_code == 200
     assert response.json()[0]["page_number"] == 2
+
+
+def test_library_agent_discovers_and_cites_multiple_courses(client, sample_pdf, monkeypatch):
+    http, main, _ = client
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    first_course = create_course(http)
+    upload(http, first_course, sample_pdf)
+    second_course = http.post("/api/courses", json={"name": "Deep Learning"}).json()["id"]
+    upload(http, second_course, sample_pdf)
+    def decide(_goal, evidence, steps):
+        if len(steps) == 1:
+            return {
+                "tool": "read_page",
+                "arguments": {
+                    "document_id": evidence[0]["document_id"],
+                    "page_number": evidence[0]["page_number"],
+                    "radius": 0,
+                },
+            }
+        return {"tool": "finish", "arguments": {}}
+
+    monkeypatch.setattr(main.ai, "decide_agent_action", decide)
+
+    def answer(_question, evidence, _images=None):
+        numbers = []
+        seen = set()
+        for number, item in enumerate(evidence, 1):
+            if item["course_id"] not in seen:
+                seen.add(item["course_id"])
+                numbers.append(number)
+        assert seen == {first_course, second_course}
+        return {
+            "answer": "The concept appears in both courses " + " ".join(f"[{number}]" for number in numbers),
+            "citation_numbers": numbers,
+            "insufficient": False,
+        }
+
+    monkeypatch.setattr(main.ai, "answer_exploration", answer)
+    response = http.post("/api/agent/explore", json={"query": "training data"})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert {item["id"] for item in result["courses"]} == {first_course, second_course}
+    assert {item["course_id"] for item in result["citations"]} == {first_course, second_course}
+    assert result["steps"][0]["tool"] == "search_materials"
+    assert result["steps"][1]["document_title"] == result["citations"][0]["title"]
+    assert result["steps"][-1]["tool"] == "finish"
+
+
+def test_library_agent_cannot_read_an_undiscovered_document(client, sample_pdf, monkeypatch):
+    http, main, _ = client
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    course_id = create_course(http)
+    upload(http, course_id, sample_pdf)
+    decisions = iter([
+        {"tool": "read_page", "arguments": {"document_id": 999999, "page_number": 1, "radius": 0}},
+    ])
+    monkeypatch.setattr(main.ai, "decide_agent_action", lambda *_: next(decisions))
+    monkeypatch.setattr(main.ai, "answer_exploration", lambda _q, _e, _images=None: {
+        "answer": "Supported by the discovered material [1]", "citation_numbers": [1], "insufficient": False,
+    })
+    response = http.post("/api/agent/explore", json={"query": "convolution"})
+    assert response.status_code == 200, response.text
+    assert response.json()["steps"][-1] == {
+        "number": 2,
+        "tool": "read_page",
+        "arguments": {"document_id": 999999, "page_number": 1, "radius": 0},
+        "result_count": 0,
+    }
+
+
+def test_agent_new_evidence_replaces_old_hits_when_window_is_full(client):
+    _, main, _ = client
+    old = [
+        {
+            "id": number, "document_id": number, "course_id": 1,
+            "page_number": 1, "title": f"Old {number}", "content": "broad result",
+        }
+        for number in range(1, 17)
+    ]
+    focused = [{
+        "id": 99, "document_id": 99, "course_id": 2,
+        "page_number": 4, "title": "Focused", "content": "exact answer",
+    }]
+
+    combined = main.combine_agent_evidence(old, focused)
+
+    assert len(combined) == 16
+    assert combined[0]["document_id"] == 99
+    assert all(item["document_id"] != 16 for item in combined)

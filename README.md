@@ -2,7 +2,7 @@
 
 **Ask your notes. Verify every answer.**
 
-![CiteMind course workspace](docs/images/citemind-workspace.png)
+![CiteMind cross-course Knowledge Home](docs/images/citemind-knowledge-home.png)
 
 [Watch the 18-second product walkthrough](docs/video/citemind-demo.mp4)
 
@@ -16,13 +16,15 @@
 
 CiteMind is a local-first course knowledge base for lecture notes, student notes, and papers. It answers questions only from the uploaded material, attaches a page-level citation to every supported claim, and opens the exact PDF page behind each citation.
 
-> Status: working v0.1.8 MVP. Text and scanned PDFs with page vision, single user, Windows-first.
+> Status: working v0.2.0 MVP. Cross-course Knowledge Agent, text and scanned PDFs with page vision, single user, Windows-first.
 
 ## Why CiteMind
 
 Most document chat demos optimize for a fluent answer. CiteMind optimizes for a verifiable answer:
 
-- answers are grounded in one course or one selected document;
+- the Knowledge Home can explore the whole library and show which courses and materials teach a topic;
+- course workspaces stay available for questions grounded in one course or one selected document;
+- the Agent is bounded to six read-only search, page-reading, and visual-inspection actions;
 - citations are server-validated and cannot name a source the retriever did not supply;
 - every citation contains the file, PDF page, and original excerpt;
 - clicking evidence opens and highlights the matching PDF page;
@@ -65,11 +67,11 @@ npm run dev
 
 ## Product flow
 
-1. Create one course.
-2. Add text or scanned PDF lectures, notes, or papers.
-3. Ask across the course or limit the scope to one document.
-4. Visual questions selectively inspect a relevant original page and mark the citation as `视觉核对`.
-5. Open any citation to inspect the original page and highlighted evidence.
+1. Create courses and add text or scanned PDF lectures, notes, or papers.
+2. Ask the Knowledge Home which courses and materials explain a topic.
+3. Watch the bounded Agent search the library, read exact pages, and selectively inspect visual evidence.
+4. Review the cited knowledge structure and related-course map, or enter one course for a focused question.
+5. Open any citation to inspect the exact original PDF page and highlighted evidence.
 
 ## Architecture
 
@@ -79,7 +81,8 @@ flowchart LR
     Parse --> Chunks["Paragraph chunks<br/>never cross a page"]
     Chunks --> FTS["SQLite FTS5"]
     Chunks --> Local["Local multilingual embeddings"]
-    Q["Student question"] --> Hybrid["Hybrid retrieval"]
+    Q["Knowledge Home or course question"] --> Agent["Bounded read-only Agent<br/>search · read page · inspect page"]
+    Agent --> Hybrid["Hybrid retrieval"]
     FTS --> Hybrid
     Local --> Hybrid
     Hybrid --> Evidence["Numbered evidence"]
@@ -98,7 +101,7 @@ The stack is intentionally small: React, FastAPI, SQLite/FTS5, PyMuPDF, PDF.js, 
 
 - Original PDFs, extracted text, SQLite data, chat history, and embeddings stay in `backend/data/`.
 - Embeddings are generated locally with a multilingual ONNX model.
-- During scanned-PDF upload, each image-only page is sent once for visual OCR. During questions, only the question, up to fourteen retrieved excerpts (including nearby-page context), at most two recent conversation turns, and at most one relevant original-page image go to the configured AI service.
+- During scanned-PDF upload, each image-only page is sent once for visual OCR. During course questions, only the question, up to fourteen retrieved excerpts, at most two recent conversation turns, and at most one relevant original-page image go to the configured AI service. A Knowledge Home exploration sends up to sixteen excerpts and the bounded Agent's read-only action history.
 - API keys are read from `.env`; document text and keys are not logged by CiteMind.
 - Deleting a document removes its file and index and clears that course's chat history.
 
@@ -109,7 +112,7 @@ Do not upload material you are not allowed to process. Your AI provider's retent
 - PDF only; no Word or PowerPoint
 - PDFs up to 25 MB and 200 pages; visual OCR is capped at 50 scanned pages per file
 - one local user; no accounts, sync, or collaboration
-- no cross-course questions
+- cross-course exploration is synchronous and capped at six read-only actions; it does not run autonomously in the background
 - one configurable OpenAI provider; visual analysis uses the Responses API
 - no summaries, flashcards, quiz generation, or knowledge graph
 
@@ -124,7 +127,7 @@ cd ..\frontend
 npm run build
 ```
 
-The tests cover page provenance, background scanned-PDF OCR, page-level retry and cleanup, complete deletion, visual-page selection and caching, safe visual fallback, the full ask/citation response, insufficient-evidence handling, and rejection of fabricated, mismatched, or unsupported answers.
+The tests cover page provenance, background scanned-PDF OCR, page-level retry and cleanup, complete deletion, visual-page selection and caching, safe visual fallback, course and cross-course Agent answers, read-only Agent permissions, insufficient-evidence handling, and rejection of fabricated, mismatched, or unsupported answers.
 
 The self-authored English and Chinese demo courses and 30-question retrieval benchmark live in `sample-data/`. Generate the PDFs, index both in one temporary course, and evaluate top-5 page recall:
 
@@ -156,14 +159,14 @@ See the dated [validation report](docs/VALIDATION.md) for the complete test matr
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
-The current engineering candidate is documented in the [v0.1.8 release notes](docs/RELEASE_NOTES_v0.1.8.md). The full mechanics course and formula-evidence path have been rechecked, but CiteMind is not represented as v1.0 until the required lecture/notes/paper source mix passes.
+The current engineering candidate is documented in the [v0.2.0 release notes](docs/RELEASE_NOTES_v0.2.0.md). The full mechanics course and formula-evidence path have been rechecked, but CiteMind is not represented as v1.0 until the required lecture/notes/paper source mix passes.
 
 ## Repository map
 
 ```text
 backend/app/       API, storage, retrieval, and citation validation
 backend/tests/     focused risk-chain tests
-frontend/src/      React workspace and PDF evidence viewer
+frontend/src/      Knowledge Home, course workspace, and PDF evidence viewer
 sample-data/       self-authored demo course and retrieval benchmark
 ROADMAP.md         frozen v1 scope and later ideas
 ```

@@ -4,7 +4,7 @@ import pytest
 import httpx
 
 from app import ai
-from app.ai import AIError, _answer_prompt, answer, answer_with_images, validate_answer
+from app.ai import AIError, _answer_prompt, answer, answer_with_images, decide_agent_action, validate_answer
 
 
 def test_answer_prompt_treats_course_wording_as_canonical():
@@ -129,3 +129,36 @@ def test_vision_answer_retries_once_when_citation_numbers_are_invalid(monkeypatc
     assert result["citation_numbers"] == [1]
     assert len(calls) == 2
     assert "Correct only the citation protocol" in json.dumps(calls[1])
+
+
+def test_agent_action_is_limited_to_validated_read_only_tools(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+
+    def post(*_, **__):
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps({
+            "tool": "read_page",
+            "arguments": {"document_id": 7, "page_number": 4, "radius": 1},
+        })}}]}, request=httpx.Request("POST", "https://example.test"))
+
+    monkeypatch.setattr(httpx.Client, "post", post)
+    decision = decide_agent_action("Explain the topic", [{
+        "document_id": 7, "course_name": "Mechanics", "title": "Lecture",
+        "page_number": 4, "content": "Evidence",
+    }], [])
+    assert decision == {
+        "tool": "read_page",
+        "arguments": {"document_id": 7, "page_number": 4, "radius": 1},
+    }
+
+
+def test_agent_rejects_unrecognized_actions(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+
+    def post(*_, **__):
+        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps({
+            "tool": "delete_document", "arguments": {"document_id": 1},
+        })}}]}, request=httpx.Request("POST", "https://example.test"))
+
+    monkeypatch.setattr(httpx.Client, "post", post)
+    with pytest.raises(AIError, match="invalid action"):
+        decide_agent_action("Goal", [], [])

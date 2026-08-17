@@ -10,3 +10,4 @@ frontend/*.tsbuildinfo
 work/
 release/
 tmp/
+.superdesign/

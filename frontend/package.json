@@ -1,12 +1,11 @@
 {
   "name": "citemind-frontend",
   "private": true,
-  "version": "0.1.8",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint ."
+    "build": "tsc -b && vite build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

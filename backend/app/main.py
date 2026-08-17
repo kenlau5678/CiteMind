@@ -113,7 +113,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="CiteMind API", version="0.1.8", lifespan=lifespan)
+app = FastAPI(title="CiteMind API", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -139,6 +139,10 @@ class SearchRequest(BaseModel):
 class AskRequest(SearchRequest):
     context_document_id: int | None = None
     context_page_number: int | None = Field(default=None, ge=1)
+
+
+class AgentRequest(BaseModel):
+    query: str = Field(min_length=1, max_length=500)
 
 
 def require_course(course_id: int):
@@ -170,7 +174,7 @@ def split_page(text: str) -> list[str]:
     return chunks
 
 
-def _keyword_results(db, course_id: int, query: str, document_id: int | None, limit: int):
+def _keyword_results(db, course_id: int | None, query: str, document_id: int | None, limit: int):
     stopwords = {
         "a", "an", "and", "are", "as", "at", "be", "by", "do", "does", "for", "from",
         "how", "i", "in", "is", "it", "of", "on", "or", "the", "this", "to", "what",
@@ -181,26 +185,44 @@ def _keyword_results(db, course_id: int, query: str, document_id: int | None, li
         if (len(token) >= 2 or "\u4e00" <= token <= "\u9fff") and token not in stopwords
     ]
     match = " OR ".join(f'"{token}"' for token in tokens[:12])
-    scope = "AND c.document_id=?" if document_id else ""
-    params = [match, course_id] + ([document_id] if document_id else []) + [limit]
     if match:
+        filters = ["chunks_fts MATCH ?", "d.status='ready'"]
+        params: list = [match]
+        if course_id is not None:
+            filters.append("c.course_id=?")
+            params.append(course_id)
+        if document_id is not None:
+            filters.append("c.document_id=?")
+            params.append(document_id)
+        params.append(limit)
         try:
             return rows(db.execute(
-                f"""SELECT c.*, d.title, d.filename, bm25(chunks_fts) keyword_score
+                f"""SELECT c.*, d.title, d.filename, co.name course_name,
+                           bm25(chunks_fts) keyword_score
                     FROM chunks_fts JOIN chunks c ON c.id=chunks_fts.rowid
                     JOIN documents d ON d.id=c.document_id
-                    WHERE chunks_fts MATCH ? AND c.course_id=? AND d.status='ready' {scope}
+                    JOIN courses co ON co.id=c.course_id
+                    WHERE {' AND '.join(filters)}
                     ORDER BY keyword_score LIMIT ?""",
-                params,
+                    params,
             ).fetchall())
         except Exception:
             pass
     like = f"%{query[:200]}%"
-    params = [course_id, like] + ([document_id] if document_id else []) + [limit]
+    filters = ["d.status='ready'", "c.content LIKE ?"]
+    params = [like]
+    if course_id is not None:
+        filters.append("c.course_id=?")
+        params.append(course_id)
+    if document_id is not None:
+        filters.append("c.document_id=?")
+        params.append(document_id)
+    params.append(limit)
     return rows(db.execute(
-        f"""SELECT c.*, d.title, d.filename, 0 keyword_score FROM chunks c
+        f"""SELECT c.*, d.title, d.filename, co.name course_name, 0 keyword_score FROM chunks c
             JOIN documents d ON d.id=c.document_id
-            WHERE c.course_id=? AND d.status='ready' AND c.content LIKE ? {scope} LIMIT ?""",
+            JOIN courses co ON co.id=c.course_id
+            WHERE {' AND '.join(filters)} LIMIT ?""",
         params,
     ).fetchall())
 
@@ -223,14 +245,18 @@ def _query_topics(query: str) -> set[str]:
     return topics
 
 
-def _cjk_results(db, course_id: int, query: str, document_id: int | None, limit: int):
+def _cjk_results(db, course_id: int | None, query: str, document_id: int | None, limit: int):
     query_terms = _cjk_bigrams(query)
     query_topics = _query_topics(query)
     if not query_terms:
         return []
-    sql = """SELECT c.*, d.title, d.filename FROM chunks c
-             JOIN documents d ON d.id=c.document_id WHERE c.course_id=? AND d.status='ready'"""
-    params = [course_id]
+    sql = """SELECT c.*, d.title, d.filename, co.name course_name FROM chunks c
+             JOIN documents d ON d.id=c.document_id
+             JOIN courses co ON co.id=c.course_id WHERE d.status='ready'"""
+    params = []
+    if course_id is not None:
+        sql += " AND c.course_id=?"
+        params.append(course_id)
     if document_id is not None:
         sql += " AND c.document_id=?"
         params.append(document_id)
@@ -275,15 +301,16 @@ def _cjk_results(db, course_id: int, query: str, document_id: int | None, limit:
     return scored[:limit]
 
 
-def search_chunks(course_id: int, request: SearchRequest):
-    require_course(course_id)
+def search_chunks(course_id: int | None, request: SearchRequest):
+    if course_id is not None:
+        require_course(course_id)
     if request.document_id is not None:
         with connect() as db:
             scoped_document = db.execute(
-                "SELECT 1 FROM documents WHERE id=? AND course_id=?",
-                (request.document_id, course_id),
+                "SELECT course_id FROM documents WHERE id=?",
+                (request.document_id,),
             ).fetchone()
-        if not scoped_document:
+        if not scoped_document or (course_id is not None and scoped_document["course_id"] != course_id):
             raise HTTPException(404, "Document not found in this course")
     try:
         query_vector = ai.embed([request.query])[0]
@@ -292,11 +319,15 @@ def search_chunks(course_id: int, request: SearchRequest):
     with connect() as db:
         keyword = _keyword_results(db, course_id, request.query, request.document_id, 30)
         cjk = _cjk_results(db, course_id, request.query, request.document_id, 30)
-        sql = """SELECT c.*, d.title, d.filename FROM chunks c
+        sql = """SELECT c.*, d.title, d.filename, co.name course_name FROM chunks c
                  JOIN documents d ON d.id=c.document_id
-                 WHERE c.course_id=? AND d.status='ready' AND c.embedding IS NOT NULL"""
-        params = [course_id]
-        if request.document_id:
+                 JOIN courses co ON co.id=c.course_id
+                 WHERE d.status='ready' AND c.embedding IS NOT NULL"""
+        params = []
+        if course_id is not None:
+            sql += " AND c.course_id=?"
+            params.append(course_id)
+        if request.document_id is not None:
             sql += " AND c.document_id=?"
             params.append(request.document_id)
         semantic = rows(db.execute(sql, params).fetchall())
@@ -319,7 +350,7 @@ def search_chunks(course_id: int, request: SearchRequest):
     deduplicated = []
     seen_pages = set()
     for item in ranked:
-        page = (item["title"], item["page_number"])
+        page = (item["document_id"], item["page_number"])
         if page in seen_pages:
             continue
         seen_pages.add(page)
@@ -348,8 +379,9 @@ def add_neighbor_context(evidence: list[dict], max_extra: int = 6) -> list[dict]
     with connect() as db:
         for seed in result[:4]:
             neighbors = rows(db.execute(
-                """SELECT c.*, d.title, d.filename FROM chunks c
+                """SELECT c.*, d.title, d.filename, co.name course_name FROM chunks c
                    JOIN documents d ON d.id=c.document_id
+                   JOIN courses co ON co.id=c.course_id
                    WHERE c.document_id=? AND c.page_number IN (?,?)
                    ORDER BY c.page_number""",
                 (seed["document_id"], seed["page_number"] - 1, seed["page_number"] + 1),
@@ -669,7 +701,8 @@ def current_page_evidence(course_id: int, document_id: int, page_number: int) ->
         if not document or document["status"] != "ready" or page_number > document["page_count"]:
             raise HTTPException(422, "The current PDF page is not available")
         evidence = rows(db.execute(
-            """SELECT c.*,d.title,d.filename FROM chunks c JOIN documents d ON d.id=c.document_id
+            """SELECT c.*,d.title,d.filename,co.name course_name FROM chunks c
+               JOIN documents d ON d.id=c.document_id JOIN courses co ON co.id=c.course_id
                WHERE c.document_id=? AND c.page_number=? ORDER BY c.id""",
             (document_id, page_number),
         ).fetchall())
@@ -684,7 +717,11 @@ def current_page_evidence(course_id: int, document_id: int, page_number: int) ->
 def prepare_visual_evidence(
     question: str, evidence: list[dict], forced_page: tuple[int, int] | None = None,
 ) -> tuple[list[dict], list[dict]]:
-    if not ai.API_KEY() or not question_requests_vision(question) or ai.VISION_MAX_PAGES() == 0:
+    if (
+        not ai.API_KEY()
+        or ai.VISION_MAX_PAGES() == 0
+        or (forced_page is None and not question_requests_vision(question))
+    ):
         return evidence, []
     enriched = [dict(item) for item in evidence]
     images = []
@@ -774,6 +811,8 @@ def ask(course_id: int, body: AskRequest):
         {
             "number": number,
             "chunk_id": evidence[number - 1]["id"],
+            "course_id": evidence[number - 1]["course_id"],
+            "course_name": evidence[number - 1].get("course_name", ""),
             "document_id": evidence[number - 1]["document_id"],
             "title": evidence[number - 1]["title"],
             "page_number": evidence[number - 1]["page_number"],
@@ -794,6 +833,156 @@ def ask(course_id: int, body: AskRequest):
     return {
         "answer": result["answer"], "citations": citations,
         "insufficient": result["insufficient"], "vision_used": vision_used,
+    }
+
+
+def library_page_evidence(document_id: int, page_number: int, radius: int = 0) -> list[dict]:
+    with connect() as db:
+        document = db.execute(
+            "SELECT page_count,status FROM documents WHERE id=?", (document_id,)
+        ).fetchone()
+        if not document or document["status"] != "ready" or page_number > document["page_count"]:
+            raise HTTPException(422, "The requested PDF page is not available")
+        first_page = max(1, page_number - radius)
+        last_page = min(document["page_count"], page_number + radius)
+        evidence = rows(db.execute(
+            """SELECT c.*,d.title,d.filename,co.name course_name FROM chunks c
+               JOIN documents d ON d.id=c.document_id JOIN courses co ON co.id=c.course_id
+               WHERE c.document_id=? AND c.page_number BETWEEN ? AND ?
+               ORDER BY c.page_number,c.id""",
+            (document_id, first_page, last_page),
+        ).fetchall())
+    for item in evidence:
+        item.pop("embedding", None)
+    return merge_page_evidence(evidence)
+
+
+def combine_agent_evidence(current: list[dict], added: list[dict], limit: int = 16) -> list[dict]:
+    # Later Agent actions are more focused than the initial broad search, so keep
+    # newly read pages before filling the remaining evidence window with old hits.
+    combined = merge_page_evidence(added + current)
+    for item in combined:
+        item.pop("embedding", None)
+    return combined[:limit]
+
+
+def citation_courses(citations: list[dict]) -> list[dict]:
+    courses: dict[int, dict] = {}
+    for citation in citations:
+        course = courses.setdefault(citation["course_id"], {
+            "id": citation["course_id"],
+            "name": citation.get("course_name", ""),
+            "documents": [],
+        })
+        document = next(
+            (item for item in course["documents"] if item["id"] == citation["document_id"]),
+            None,
+        )
+        if document is None:
+            document = {"id": citation["document_id"], "title": citation["title"], "pages": []}
+            course["documents"].append(document)
+        if citation["page_number"] not in document["pages"]:
+            document["pages"].append(citation["page_number"])
+    return list(courses.values())
+
+
+@app.post("/api/agent/explore")
+def explore_library(body: AgentRequest):
+    if not ai.API_KEY():
+        raise HTTPException(503, "OPENAI_API_KEY is not configured")
+    evidence = add_neighbor_context(search_chunks(None, SearchRequest(query=body.query, top_k=10)))
+    if not evidence:
+        raise HTTPException(422, "No reliable evidence was found in the library")
+    evidence = combine_agent_evidence([], evidence)
+    steps = [{
+        "number": 1,
+        "tool": "search_materials",
+        "arguments": {"query": body.query},
+        "result_count": len(evidence),
+    }]
+    called = {json.dumps(["search_materials", {"query": body.query}], ensure_ascii=False, sort_keys=True)}
+    forced_page: tuple[int, int] | None = None
+
+    for _ in range(5):
+        try:
+            decision = ai.decide_agent_action(body.query, evidence, steps)
+        except ai.AIError:
+            break
+        tool = decision["tool"]
+        arguments = decision["arguments"]
+        if tool == "finish":
+            steps.append({
+                "number": len(steps) + 1, "tool": tool, "arguments": {},
+                "result_count": len(evidence),
+            })
+            break
+        signature = json.dumps([tool, arguments], ensure_ascii=False, sort_keys=True)
+        if signature in called:
+            break
+        called.add(signature)
+        added: list[dict] = []
+        known_documents = {item["document_id"] for item in evidence}
+        document_title = next(
+            (item["title"] for item in evidence if item["document_id"] == arguments.get("document_id")),
+            None,
+        )
+        try:
+            if tool == "search_materials":
+                query = str(arguments["query"]).strip()[:500]
+                added = add_neighbor_context(
+                    search_chunks(None, SearchRequest(query=query, top_k=8)), max_extra=2,
+                )
+            elif arguments["document_id"] in known_documents:
+                radius = arguments.get("radius", 0) if tool == "read_page" else 0
+                added = library_page_evidence(
+                    arguments["document_id"], arguments["page_number"], radius,
+                )
+                if tool == "inspect_page":
+                    forced_page = (arguments["document_id"], arguments["page_number"])
+        except HTTPException:
+            added = []
+        evidence = combine_agent_evidence(evidence, added)
+        if forced_page:
+            evidence.sort(key=lambda item: (
+                (item["document_id"], item["page_number"]) != forced_page,
+            ))
+        steps.append({
+            "number": len(steps) + 1,
+            "tool": tool,
+            "arguments": arguments,
+            "result_count": len(added),
+            **({"document_title": document_title} if document_title else {}),
+        })
+        if not added and tool != "inspect_page":
+            break
+
+    visual_evidence, images = prepare_visual_evidence(body.query, evidence, forced_page)
+    try:
+        result = ai.answer_exploration(body.query, visual_evidence, images)
+    except ai.AIError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    image_numbers = {item["number"] for item in images}
+    citations = [
+        {
+            "number": number,
+            "chunk_id": evidence[number - 1]["id"],
+            "course_id": evidence[number - 1]["course_id"],
+            "course_name": evidence[number - 1].get("course_name", ""),
+            "document_id": evidence[number - 1]["document_id"],
+            "title": evidence[number - 1]["title"],
+            "page_number": evidence[number - 1]["page_number"],
+            "content": evidence[number - 1]["content"],
+            "visual": bool(images) and number in image_numbers,
+        }
+        for number in result["citation_numbers"]
+    ]
+    return {
+        "answer": result["answer"],
+        "citations": citations,
+        "steps": steps,
+        "courses": citation_courses(citations),
+        "insufficient": result["insufficient"],
+        "vision_used": bool(images),
     }
 
 

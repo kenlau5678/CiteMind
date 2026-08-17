@@ -8,6 +8,7 @@ This file protects the v1 scope. New ideas belong here until the core path—sta
 - [x] text PDF extraction with stable PDF page provenance
 - [x] local multilingual embeddings and SQLite full-text search
 - [x] hybrid retrieval scoped to course or current file
+- [x] cross-course Knowledge Home with a bounded, read-only exploration Agent
 - [x] AI answers with server-validated citations
 - [x] citation excerpt and PDF page navigation/highlighting
 - [x] local storage and chat history
@@ -31,4 +32,4 @@ This file protects the v1 scope. New ideas belong here until the core path—sta
 
 ## Explicitly rejected for v1
 
-Accounts, microservices, background queues, a dedicated vector database, knowledge graphs, multiple provider adapters, mobile apps, and cross-course chat.
+Accounts, microservices, background queues, a dedicated vector database, an editable knowledge graph, multiple provider adapters, mobile apps, and unbounded autonomous agents.

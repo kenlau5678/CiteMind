@@ -3,7 +3,8 @@ import { api } from "./api";
 import { MathText } from "./components/MathText";
 import { PdfViewer, savedPdfPage } from "./components/PdfViewer";
 import { CitationPreview } from "./components/CitationPreview";
-import type { Citation, Course, Document, Message } from "./types";
+import { KnowledgeHome } from "./components/KnowledgeHome";
+import type { AgentResult, Citation, Course, Document, Message } from "./types";
 
 const kindNames = { lecture: "Lecture", notes: "Notes", paper: "Paper" };
 const uniqueCitations = (citations: Citation[]) => citations.filter((citation, index) =>
@@ -26,7 +27,12 @@ export default function App() {
   const [draggedDocumentId, setDraggedDocumentId] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [aiConfigured, setAiConfigured] = useState(true);
+  const [homeQuestion, setHomeQuestion] = useState("");
+  const [agentBusy, setAgentBusy] = useState(false);
+  const [agentError, setAgentError] = useState("");
+  const [agentResult, setAgentResult] = useState<AgentResult | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const pendingCitationRef = useRef<Citation | null>(null);
 
   const selectedCourse = courses.find((course) => course.id === courseId);
   const readyDocuments = documents.filter((document) => document.status === "ready");
@@ -36,11 +42,12 @@ export default function App() {
   async function refreshCourses(selectFirst = false) {
     const data = await api.courses();
     setCourses(data);
-    if ((selectFirst || courseId === null) && data[0]) setCourseId(data[0].id);
+    if (selectFirst && data[0]) setCourseId(data[0].id);
+    else if (courseId !== null && !data.some((course) => course.id === courseId)) setCourseId(null);
   }
 
   useEffect(() => {
-    refreshCourses(true).catch(showError);
+    refreshCourses().catch(showError);
     api.config().then((config) => setAiConfigured(config.ai_configured)).catch(showError);
   }, []);
   useEffect(() => {
@@ -48,10 +55,15 @@ export default function App() {
     Promise.all([api.documents(courseId), api.messages(courseId)]).then(([docs, history]) => {
       setDocuments(docs);
       setMessages(history);
-      const next = docs.find((item) => item.id === activeDocument?.id) ?? docs[0] ?? null;
+      const pending = pendingCitationRef.current;
+      const next = docs.find((item) => item.id === pending?.document_id)
+        ?? docs.find((item) => item.id === activeDocument?.id)
+        ?? docs[0]
+        ?? null;
       setActiveDocument(next);
-      setPage(next ? savedPdfPage(next.id, next.page_count) : 1);
-      setHighlight(undefined);
+      setPage(pending && next?.id === pending.document_id ? pending.page_number : next ? savedPdfPage(next.id, next.page_count) : 1);
+      setHighlight(pending && next?.id === pending.document_id ? pending.content : undefined);
+      pendingCitationRef.current = null;
     }).catch(showError);
   }, [courseId]);
   useEffect(() => {
@@ -110,7 +122,25 @@ export default function App() {
     } finally { setBusy(false); }
   }
 
+  async function exploreLibrary(event: FormEvent) {
+    event.preventDefault();
+    if (!homeQuestion.trim() || agentBusy) return;
+    const text = homeQuestion.trim();
+    setAgentError("");
+    setAgentBusy(true);
+    try {
+      setAgentResult(await api.explore(text));
+    } catch (reason) {
+      setAgentError(reason instanceof Error ? reason.message : "Knowledge exploration failed");
+    } finally { setAgentBusy(false); }
+  }
+
   function openCitation(citation: Citation) {
+    if (citation.course_id && citation.course_id !== courseId) {
+      pendingCitationRef.current = citation;
+      setCourseId(citation.course_id);
+      return;
+    }
     const document = documents.find((item) => item.id === citation.document_id);
     if (!document) return;
     setActiveDocument(document);
@@ -216,6 +246,11 @@ export default function App() {
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark">C</span><span>CiteMind<small>Verify every answer.</small></span></div>
+        <nav className="home-navigation">
+          <button className={courseId === null ? "home-link active" : "home-link"} onClick={() => setCourseId(null)}>
+            <span>✦</span><strong>Knowledge home</strong>
+          </button>
+        </nav>
         <div className="sidebar-heading"><span>Your courses</span><button onClick={createCourse} aria-label="Create course">＋</button></div>
         <nav className="course-list">
           {courses.map((course) => (
@@ -230,13 +265,20 @@ export default function App() {
       </aside>
 
       {!selectedCourse ? (
-        <section className="welcome">
-          <span className="hero-mark">C</span>
-          <p className="eyebrow">Your evidence-first study space</p>
-          <h1>Ask your notes.<br />Verify every answer.</h1>
-          <p>Bring lectures, notes, and papers together. CiteMind answers from your material and takes you back to the exact page.</p>
-          <button className="primary" onClick={createCourse}>Create your first course</button>
-        </section>
+        <KnowledgeHome
+          courses={courses}
+          question={homeQuestion}
+          busy={agentBusy}
+          error={agentError}
+          aiConfigured={aiConfigured}
+          result={agentResult}
+          onQuestionChange={setHomeQuestion}
+          onSubmit={exploreLibrary}
+          onSelectCourse={setCourseId}
+          onCreateCourse={createCourse}
+          onOpenCitation={openCitation}
+          onClearError={() => setAgentError("")}
+        />
       ) : (
         <section className="workspace">
           <header className="workspace-header">
