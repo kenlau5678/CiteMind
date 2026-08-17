@@ -4,11 +4,13 @@ Validated on 2026-08-17 with Windows 11, Python 3.12, Node.js 24, and a Chromium
 
 | Requirement | Evidence | Result |
 | --- | --- | --- |
-| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 51/51 passed |
+| Backend risk-chain tests | `cd backend; .\.venv\Scripts\python -m pytest -q` | 52/52 passed |
 | Production frontend | `cd frontend; npm run build` | Passed |
 | Cross-course Agent | Real Knowledge Home question across the local library | Searched the library, read five exact/adjacent pages, returned six validated page citations, and grouped the related course/material |
 | Agent permission and evidence boundary | Focused unit and API tests | Unknown actions rejected; exact-page reads limited to discovered documents; repeated actions stopped; later focused evidence retained when the 16-page window is full |
 | Knowledge Home citation navigation | Production browser against a real Agent answer | Citation switched into the correct course and opened the cited original PDF page; zero browser errors |
+| Knowledge Home streaming | Real NDJSON request plus production-browser observation | Agent steps appeared before completion; validated answer arrived as deltas; citations appeared only with the final event |
+| Markdown and math rendering | Production browser with a requested structured answer | 7 headings, 12 emphasis nodes, 2 lists, 3 tables, 45 KaTeX nodes, 4 citations, and zero browser errors |
 | Clean source acceptance | Tracked files copied without environments, dependencies, data, or `.env`; then `start.ps1` | Fresh Python environment and dependencies installed, frontend built, no-key `.env` created, health endpoint passed, and 46/46 backend checks passed |
 | Source ordering | Real pointer drag followed by refresh and keyboard restoration | New order persisted; original order restored |
 | Citation deduplication | Legacy chat history plus merged backend evidence | Same document/page appears once per answer |

@@ -4,7 +4,7 @@ import { MathText } from "./components/MathText";
 import { PdfViewer, savedPdfPage } from "./components/PdfViewer";
 import { CitationPreview } from "./components/CitationPreview";
 import { KnowledgeHome } from "./components/KnowledgeHome";
-import type { AgentResult, Citation, Course, Document, Message } from "./types";
+import type { AgentResult, AgentStreamEvent, Citation, Course, Document, Message } from "./types";
 
 const kindNames = { lecture: "Lecture", notes: "Notes", paper: "Paper" };
 const uniqueCitations = (citations: Citation[]) => citations.filter((citation, index) =>
@@ -30,6 +30,7 @@ export default function App() {
   const [homeQuestion, setHomeQuestion] = useState("");
   const [agentBusy, setAgentBusy] = useState(false);
   const [agentError, setAgentError] = useState("");
+  const [agentStatus, setAgentStatus] = useState("");
   const [agentResult, setAgentResult] = useState<AgentResult | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const pendingCitationRef = useRef<Citation | null>(null);
@@ -127,12 +128,32 @@ export default function App() {
     if (!homeQuestion.trim() || agentBusy) return;
     const text = homeQuestion.trim();
     setAgentError("");
+    setAgentStatus("正在连接知识库…");
+    setAgentResult({ answer: "", citations: [], steps: [], courses: [], insufficient: false, vision_used: false });
     setAgentBusy(true);
     try {
-      setAgentResult(await api.explore(text));
+      const onEvent = (event: AgentStreamEvent) => {
+        if (event.type === "status") setAgentStatus(event.message);
+        if (event.type === "step") {
+          setAgentResult((current) => current && {
+            ...current,
+            steps: [...current.steps.filter((step) => step.number !== event.step.number), event.step]
+              .sort((left, right) => left.number - right.number),
+          });
+        }
+        if (event.type === "answer_delta") {
+          setAgentResult((current) => current && { ...current, answer: current.answer + event.delta });
+        }
+        if (event.type === "complete") setAgentResult(event.result);
+      };
+      await api.explore(text, onEvent);
     } catch (reason) {
+      setAgentResult(null);
       setAgentError(reason instanceof Error ? reason.message : "Knowledge exploration failed");
-    } finally { setAgentBusy(false); }
+    } finally {
+      setAgentBusy(false);
+      setAgentStatus("");
+    }
   }
 
   function openCitation(citation: Citation) {
@@ -269,6 +290,7 @@ export default function App() {
           courses={courses}
           question={homeQuestion}
           busy={agentBusy}
+          status={agentStatus}
           error={agentError}
           aiConfigured={aiConfigured}
           result={agentResult}

@@ -2,8 +2,10 @@ import json
 import math
 import mimetypes
 import os
+import queue
 import re
 import threading
+import time
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -11,7 +13,7 @@ from pathlib import Path
 import fitz
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -113,7 +115,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="CiteMind API", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="CiteMind API", version="0.2.1", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -886,10 +888,11 @@ def citation_courses(citations: list[dict]) -> list[dict]:
     return list(courses.values())
 
 
-@app.post("/api/agent/explore")
-def explore_library(body: AgentRequest):
+def run_library_exploration(body: AgentRequest, emit=None):
     if not ai.API_KEY():
         raise HTTPException(503, "OPENAI_API_KEY is not configured")
+    if emit:
+        emit({"type": "status", "message": "正在搜索整个知识库…"})
     evidence = add_neighbor_context(search_chunks(None, SearchRequest(query=body.query, top_k=10)))
     if not evidence:
         raise HTTPException(422, "No reliable evidence was found in the library")
@@ -900,6 +903,8 @@ def explore_library(body: AgentRequest):
         "arguments": {"query": body.query},
         "result_count": len(evidence),
     }]
+    if emit:
+        emit({"type": "step", "step": steps[-1]})
     called = {json.dumps(["search_materials", {"query": body.query}], ensure_ascii=False, sort_keys=True)}
     forced_page: tuple[int, int] | None = None
 
@@ -915,6 +920,8 @@ def explore_library(body: AgentRequest):
                 "number": len(steps) + 1, "tool": tool, "arguments": {},
                 "result_count": len(evidence),
             })
+            if emit:
+                emit({"type": "step", "step": steps[-1]})
             break
         signature = json.dumps([tool, arguments], ensure_ascii=False, sort_keys=True)
         if signature in called:
@@ -953,10 +960,16 @@ def explore_library(body: AgentRequest):
             "result_count": len(added),
             **({"document_title": document_title} if document_title else {}),
         })
+        if emit:
+            emit({"type": "step", "step": steps[-1]})
         if not added and tool != "inspect_page":
             break
 
+    if emit:
+        emit({"type": "status", "message": "正在检查原始页面中的公式与图形…"})
     visual_evidence, images = prepare_visual_evidence(body.query, evidence, forced_page)
+    if emit:
+        emit({"type": "status", "message": "正在根据证据组织回答并校验引用…"})
     try:
         result = ai.answer_exploration(body.query, visual_evidence, images)
     except ai.AIError as exc:
@@ -984,6 +997,49 @@ def explore_library(body: AgentRequest):
         "insufficient": result["insufficient"],
         "vision_used": bool(images),
     }
+
+
+@app.post("/api/agent/explore")
+def explore_library(body: AgentRequest):
+    return run_library_exploration(body)
+
+
+@app.post("/api/agent/explore/stream")
+def stream_library_exploration(body: AgentRequest):
+    if not ai.API_KEY():
+        raise HTTPException(503, "OPENAI_API_KEY is not configured")
+
+    def events():
+        event_queue: queue.Queue = queue.Queue()
+
+        def work():
+            try:
+                result = run_library_exploration(body, event_queue.put)
+                event_queue.put({"type": "status", "message": "引用已验证，正在输出回答…"})
+                for chunk in re.findall(r"[\s\S]{1,32}", result["answer"]):
+                    event_queue.put({"type": "answer_delta", "delta": chunk})
+                    time.sleep(0.015)
+                event_queue.put({"type": "complete", "result": result})
+            except HTTPException as exc:
+                event_queue.put({"type": "error", "message": str(exc.detail)})
+            except Exception:
+                event_queue.put({"type": "error", "message": "Knowledge exploration failed"})
+            finally:
+                event_queue.put(None)
+
+        # ponytail: one worker thread per local stream; use an async queue if multi-user concurrency is added.
+        threading.Thread(target=work, daemon=True).start()
+        while True:
+            event = event_queue.get()
+            if event is None:
+                break
+            yield json.dumps(event, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        events(),
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"

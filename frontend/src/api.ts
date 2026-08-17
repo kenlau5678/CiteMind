@@ -1,4 +1,4 @@
-import type { AgentResult, Course, Document, Message } from "./types";
+import type { AgentResult, AgentStreamEvent, Course, Document, Message } from "./types";
 
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const response = await fetch(url, options);
@@ -41,9 +41,37 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ query, document_id: documentId, context_document_id: contextDocumentId, context_page_number: contextPageNumber }),
     }),
-  explore: (query: string) => request<AgentResult>("/api/agent/explore", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
-  }),
+  explore: async (query: string, onEvent: (event: AgentStreamEvent) => void) => {
+    const response = await fetch("/api/agent/explore/stream", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({ detail: response.statusText }));
+      throw new Error(body.detail || "Knowledge exploration failed");
+    }
+    if (!response.body) throw new Error("Streaming is not supported by this browser");
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let result: AgentResult | undefined;
+    while (true) {
+      const { done, value } = await reader.read();
+      buffer += decoder.decode(value, { stream: !done });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const event = JSON.parse(line) as AgentStreamEvent;
+        onEvent(event);
+        if (event.type === "error") throw new Error(event.message);
+        if (event.type === "complete") result = event.result;
+      }
+      if (done) break;
+    }
+    if (!result) throw new Error("Knowledge exploration ended before completion");
+    return result;
+  },
 };

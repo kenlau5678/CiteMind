@@ -629,3 +629,27 @@ def test_agent_new_evidence_replaces_old_hits_when_window_is_full(client):
     assert len(combined) == 16
     assert combined[0]["document_id"] == 99
     assert all(item["document_id"] != 16 for item in combined)
+
+
+def test_library_agent_streams_steps_answer_and_validated_result(client, sample_pdf, monkeypatch):
+    http, main, _ = client
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    course_id = create_course(http)
+    upload(http, course_id, sample_pdf)
+    monkeypatch.setattr(main.ai, "decide_agent_action", lambda *_: {"tool": "finish", "arguments": {}})
+    monkeypatch.setattr(main.ai, "answer_exploration", lambda _q, _e, _images=None: {
+        "answer": "## Summary\n\n- **Grounded** answer [1]",
+        "citation_numbers": [1],
+        "insufficient": False,
+    })
+    monkeypatch.setattr(main.time, "sleep", lambda *_: None)
+
+    with http.stream("POST", "/api/agent/explore/stream", json={"query": "training data"}) as response:
+        assert response.status_code == 200
+        events = [json.loads(line) for line in response.iter_lines() if line]
+
+    assert events[0]["type"] == "status"
+    assert any(event["type"] == "step" for event in events)
+    assert "".join(event["delta"] for event in events if event["type"] == "answer_delta") == events[-1]["result"]["answer"]
+    assert events[-1]["type"] == "complete"
+    assert events[-1]["result"]["citations"][0]["course_id"] == course_id

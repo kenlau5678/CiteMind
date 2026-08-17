@@ -60,3 +60,10 @@ export type AgentResult = {
   insufficient: boolean;
   vision_used: boolean;
 };
+
+export type AgentStreamEvent =
+  | { type: "status"; message: string }
+  | { type: "step"; step: AgentStep }
+  | { type: "answer_delta"; delta: string }
+  | { type: "complete"; result: AgentResult }
+  | { type: "error"; message: string };

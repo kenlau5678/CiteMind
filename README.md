@@ -16,7 +16,7 @@
 
 CiteMind is a local-first course knowledge base for lecture notes, student notes, and papers. It answers questions only from the uploaded material, attaches a page-level citation to every supported claim, and opens the exact PDF page behind each citation.
 
-> Status: working v0.2.0 MVP. Cross-course Knowledge Agent, text and scanned PDFs with page vision, single user, Windows-first.
+> Status: working v0.2.1 MVP. Streaming cross-course Knowledge Agent, text and scanned PDFs with page vision, single user, Windows-first.
 
 ## Why CiteMind
 
@@ -25,12 +25,14 @@ Most document chat demos optimize for a fluent answer. CiteMind optimizes for a 
 - the Knowledge Home can explore the whole library and show which courses and materials teach a topic;
 - course workspaces stay available for questions grounded in one course or one selected document;
 - the Agent is bounded to six read-only search, page-reading, and visual-inspection actions;
+- Agent activity and the validated answer stream into the Knowledge Home while citations remain hidden until verification completes;
 - citations are server-validated and cannot name a source the retriever did not supply;
 - every citation contains the file, PDF page, and original excerpt;
 - clicking evidence opens and highlights the matching PDF page;
 - repeated chunks from the same PDF page are merged into one evidence card;
 - source cards can be dragged into a preferred reading order, which persists after refresh;
 - AI answers typeset inline and display LaTeX, including fractions and matrices;
+- headings, lists, emphasis, code, links, blockquotes, and Markdown tables render as structured answer content;
 - known legacy `Symbol` formula glyphs are decoded for retrieval, while every citation retains an exact original-page visual preview;
 - diagram, plot, and formula questions can inspect one relevant original page with vision; page descriptions are cached after the first use;
 - image-only scanned pages are transcribed in the background with live page progress, resumable failures, and original PDF page numbers;
@@ -159,7 +161,7 @@ See the dated [validation report](docs/VALIDATION.md) for the complete test matr
 
 Before publishing v1.0, complete the privacy-safe [real-course acceptance checklist](docs/REAL_COURSE_ACCEPTANCE.md).
 
-The current engineering candidate is documented in the [v0.2.0 release notes](docs/RELEASE_NOTES_v0.2.0.md). The full mechanics course and formula-evidence path have been rechecked, but CiteMind is not represented as v1.0 until the required lecture/notes/paper source mix passes.
+The current engineering candidate is documented in the [v0.2.1 release notes](docs/RELEASE_NOTES_v0.2.1.md). The full mechanics course and formula-evidence path have been rechecked, but CiteMind is not represented as v1.0 until the required lecture/notes/paper source mix passes.
 
 ## Repository map
 

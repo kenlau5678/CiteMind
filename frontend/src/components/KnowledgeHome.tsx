@@ -7,6 +7,7 @@ type Props = {
   courses: Course[];
   question: string;
   busy: boolean;
+  status: string;
   error: string;
   aiConfigured: boolean;
   result: AgentResult | null;
@@ -29,11 +30,11 @@ function stepText(step: AgentStep) {
   const source = step.document_title ? `《${step.document_title}》` : "资料";
   if (step.tool === "read_page") return `阅读${source}第 ${step.arguments.page_number} 页${step.arguments.radius ? "及相邻页" : ""}`;
   if (step.tool === "inspect_page") return `视觉核对${source}第 ${step.arguments.page_number} 页的公式或图形`;
-  return "证据已收集并完成引用校验";
+  return "证据已收集，准备生成回答";
 }
 
 export function KnowledgeHome({
-  courses, question, busy, error, aiConfigured, result,
+  courses, question, busy, status, error, aiConfigured, result,
   onQuestionChange, onSubmit, onSelectCourse, onCreateCourse, onOpenCitation, onClearError,
 }: Props) {
   const canAsk = courses.some((course) => (course.document_count ?? 0) > 0) && aiConfigured;
@@ -77,7 +78,7 @@ export function KnowledgeHome({
 
         {busy && (
           <section className="agent-running" aria-live="polite">
-            <div className="thinking"><i /><i /><i /> Searching courses, reading evidence, and checking citations…</div>
+            <div className="thinking"><i /><i /><i /> {status || "正在探索知识库…"}</div>
           </section>
         )}
 
@@ -93,7 +94,7 @@ export function KnowledgeHome({
 
             <article className="exploration-answer">
               <span className="eyebrow">Evidence-backed answer</span>
-              <MathText>{result.answer}</MathText>
+              {result.answer ? <MathText>{result.answer}</MathText> : <p className="answer-placeholder">等待已验证的回答…</p>}
 
               {!!result.citations.length && (
                 <div className="citations home-citations">

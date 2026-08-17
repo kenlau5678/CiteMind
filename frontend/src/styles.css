@@ -177,7 +177,28 @@ button { color: inherit; }
 .message { max-width: 92%; margin-bottom: 22px; }
 .message.user { width: fit-content; margin-left: auto; background: #e7ece7; padding: 10px 13px; border-radius: 12px 12px 2px 12px; }
 .message .role { display: block; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; color: #8c9690; margin-bottom: 5px; }
-.message p, .math-text { margin: 0; font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+.message p { margin: 0; font-size: 13px; line-height: 1.65; white-space: pre-wrap; }
+.math-text { margin: 0; font-size: 13px; line-height: 1.65; }
+.math-text > :first-child { margin-top: 0; }
+.math-text > :last-child { margin-bottom: 0; }
+.math-text p { margin: 0 0 .8em; }
+.math-text h2, .math-text h3, .math-text h4, .math-text h5, .math-text h6 { margin: 1.05em 0 .4em; line-height: 1.3; color: #24352e; }
+.math-text h2 { font-size: 18px; }
+.math-text h3 { font-size: 16px; }
+.math-text h4, .math-text h5, .math-text h6 { font-size: 14px; }
+.math-text ul, .math-text ol { margin: .45em 0 .9em; padding-left: 1.6em; }
+.math-text li { margin: .22em 0; padding-left: .15em; }
+.math-text strong { color: #293a33; }
+.math-text code { border-radius: 4px; background: #edf0eb; padding: 1px 4px; font-size: .92em; }
+.math-text pre { overflow-x: auto; border-radius: 7px; background: #26352f; color: #f3f2eb; padding: 12px; white-space: pre; }
+.math-text pre code { background: transparent; padding: 0; }
+.math-text blockquote { margin: .7em 0; border-left: 3px solid #86a090; padding: .25em 0 .25em .9em; color: #617067; }
+.math-text a { color: var(--sage); text-decoration: underline; text-underline-offset: 2px; }
+.markdown-table-wrap { overflow-x: auto; margin: .7em 0 1em; }
+.math-text table { width: 100%; border-collapse: collapse; font-size: .94em; }
+.math-text th, .math-text td { border: 1px solid #dfe3dc; padding: 7px 9px; text-align: left; vertical-align: top; }
+.math-text th { background: #edf2ec; color: #31463c; }
+.answer-placeholder { color: #8b9690; font-size: 12px; }
 .math-text .katex-display { margin: .75em 0; overflow-x: auto; overflow-y: hidden; }
 .citations { display: grid; gap: 6px; margin-top: 12px; }
 .citations button { text-align: left; border: 1px solid #d9ddd5; background: #fff; border-radius: 8px; padding: 9px; cursor: pointer; }
